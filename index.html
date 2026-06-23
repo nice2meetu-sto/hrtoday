@@ -691,9 +691,9 @@ function renderRoster(){
   const list=rosterList();
   const rows=list.map(({p,st})=>{
     const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,REF)==='현재');
-    const tags=cur.map(pr=>`<span class="tag" style="background:${colorOf(pr.제도)}" title="${pr.제도}${pr.상세?' '+pr.상세:''}&#10;${pr.시작일} ~ ${pr.종료일||'미정'}">${pr.제도}${pr.상세?' '+pr.상세:''}</span>`).join('')||'<span style="color:var(--ink2)">—</span>';
-    const lastCell = showRemark ? `<td>${p.비고||'<span style="color:var(--ink2)">—</span>'}</td>` : `<td>${tags}</td>`;
-    return `<tr><td><span class="statuschip st-${st}">${st}</span></td><td>${p.사번}</td><td style="font-weight:700">${p.사원명}</td><td>${p.부서}</td><td>${p.직급}</td><td>${p.고용형태}</td><td>${p.입사일}</td>${showLeave?`<td>${p.퇴사일||'—'}</td>`:''}${lastCell}</tr>`;
+    const tags=cur.map(pr=>`<span class="tag" style="background:${colorOf(pr.제도)}" title="${pr.제도}${pr.상세?' '+pr.상세:''}&#10;${pr.시작일} ~ ${pr.종료일||'미정'}">${pr.제도}${pr.상세?' '+pr.상세:''}</span>`).join('');
+    const lastCell = showRemark ? `<td>${p.비고||''}</td>` : `<td>${tags}</td>`;
+    return `<tr><td><span class="statuschip st-${st}">${st}</span></td><td>${p.사번}</td><td style="font-weight:700">${p.사원명}</td><td>${p.부서}</td><td>${p.직급}</td><td>${p.고용형태}</td><td>${p.입사일}</td>${showLeave?`<td>${p.퇴사일||''}</td>`:''}${lastCell}</tr>`;
   }).join('');
   const th=(label,key)=>key?`<th class="sortable" onclick="setSort('${key}')">${label}${sortArrow(key)}</th>`:`<th>${label}</th>`;
   const head=`<tr>${th('상태')}${th('사번','사번')}${th('사원명')}${th('부서')}${th('직급','직급')}${th('고용형태')}${th('입사일','입사일')}${showLeave?th('퇴사일','퇴사일'):''}${showRemark?th('비고'):th('현재 사용 제도')}</tr>`;

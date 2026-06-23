@@ -12,8 +12,8 @@
   --main:#534AB7; --main-soft:#ece9fb; --main-line:#cfc8f2;
   --valid:#3B6D11; --warn:#A32D2D; --amber:#b8860b;
   --border:#e2e4ea; --ink:#2a2c33; --ink2:#6b6f7a; --bg:#f5f6f8; --card:#ffffff;
-  /* 제도 대분류 색상 (단축/휴가/휴직) */
-  --c-단축:#5b9bd5; --c-휴가:#e09a6b; --c-휴직:#8b80e0; --c-기타:#9aa0ad;
+  /* 제도 대분류 색상 (단축/휴가/휴직/파견) */
+  --c-단축:#5b9bd5; --c-휴가:#e09a6b; --c-휴직:#8b80e0; --c-파견:#3fa39a; --c-기타:#9aa0ad;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -398,17 +398,24 @@ async function loadData(){
   }
 }
 
-/* ---- 대분류 자동 판별 ---- */
-const CATS = ["단축","휴가","휴직"];
+/* ---- 대분류 자동 판별 ----
+   제도명에 키워드가 포함되면 해당 대분류로 자동 분류된다.
+   (예: '○○휴직' → 휴직, '○○단축' → 단축). 끝말뿐 아니라 포함이면 매칭.
+   새 대분류 추가 시: 아래 CAT_RULES에 한 줄 추가 + :root에 --c-분류명 색상 추가. */
+const CAT_RULES = [
+  {cat:"단축", kw:["단축","육아시간"]},
+  {cat:"휴가", kw:["휴가","산전후"]},
+  {cat:"휴직", kw:["휴직"]},
+  {cat:"파견", kw:["파견"]},
+];
+const CATS = CAT_RULES.map(r=>r.cat);
 function categoryOf(name){
   name=name||"";
-  if(name.includes("단축")||name.includes("육아시간")) return "단축";
-  if(name.includes("휴가")||name.includes("산전후")) return "휴가";
-  if(name.includes("휴직")) return "휴직";
+  for(const r of CAT_RULES){ if(r.kw.some(k=>name.includes(k))) return r.cat; }
   return "기타";
 }
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const CAT_COLOR = {단축:css('--c-단축'),휴가:css('--c-휴가'),휴직:css('--c-휴직'),기타:css('--c-기타')};
+const CAT_COLOR = Object.fromEntries([...CATS,"기타"].map(c=>[c,css('--c-'+c)]));
 const colorOf = name => CAT_COLOR[categoryOf(name)];
 const presentCats = () => CATS.filter(c=>PROGRAMS.some(p=>categoryOf(p.제도)===c));
 

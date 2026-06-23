@@ -532,9 +532,15 @@ const rankOf     = p => String(p.직급||"").trim();
 function kstYMD(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
 function kstDate(){ const [y,m,d]=kstYMD().split('-').map(Number); return new Date(y,m-1,d); }
 
-/* '팀 순서' 시트 → 부서 표시 순서 배열 */
+/* '팀 순서' 시트 → 부서 표시 순서 배열 ('표시순서' 열이 있으면 그 값으로 정렬) */
 function parseTeamOrder(rows){
-  return (rows||[]).map(r=>String(r.팀 ?? r.부서 ?? r.팀명 ?? r.구분 ?? Object.values(r)[0] ?? "").trim()).filter(Boolean);
+  const list=(rows||[]).map((r,i)=>{
+    const name=String(r.부서 ?? r.팀 ?? r.팀명 ?? r.구분 ?? Object.values(r)[0] ?? "").trim();
+    const o=parseFloat(String(r.표시순서 ?? r.순서 ?? r['표시 순서'] ?? "").replace(/[^\d.-]/g,''));
+    return {name, ord:isNaN(o)?i+1:o, i};
+  }).filter(x=>x.name);
+  list.sort((a,b)=> a.ord-b.ord || a.i-b.i);
+  return list.map(x=>x.name);
 }
 /* '정원' 시트 → {직급/구분 → 정원수} 매핑. 가로형(직급이 열)·세로형(구분/정원) 모두 지원 */
 function parseQuota(rows){

@@ -776,7 +776,7 @@ function allEvents(){
     const cat=categoryOf(pr.제도);
     const lbl = cat==="휴직"?"휴직 시작":cat==="휴가"?((pr.제도||"").includes("산전후")?"산전후 시작":"휴가 시작"):"단축 시작";
     push({date:pr.시작일,type:lbl,cat:pr.제도,kind:"시작",사번:pr.사번,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:colorOf(pr.제도)});
-    if(pr.종료일 && cat==="휴직") push({date:pr.종료일,type:"복직(휴직종료)",cat:pr.제도,kind:"복직",사번:pr.사번,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
+    if(pr.종료일 && cat==="휴직") push({date:pr.종료일,type:"휴직 종료",cat:pr.제도,kind:"복직",사번:pr.사번,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
   });
   return ev;
 }

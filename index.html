@@ -426,7 +426,7 @@ function renderKPIs(){
   const k=[
     {lab:"전체",num:active.length,sub:fmt(REF)+" 기준 (재직+휴직)",accent:true},
     {lab:"재직 중",num:working,sub:"정상 근무"},
-    {lab:"휴직 중",num:onLeave,sub:"휴가·휴직 부재"},
+    {lab:"휴직 중",num:onLeave,sub:"육아·질병 등 휴직"},
     {lab:"임박 일정 (30일)",num:soon,sub:"인사발령 대상"},
   ];
   document.getElementById('kpis').innerHTML = k.map(x=>
@@ -550,7 +550,7 @@ function renderDDay(){
 let leaveFilter=null;   // null = 전체, 그 외 = 제도명(유형)
 function leaveRows(){
   return PROGRAMS
-    .filter(pr=>["휴가","휴직"].includes(categoryOf(pr.제도)) && programState(pr,REF)==="현재")
+    .filter(pr=>categoryOf(pr.제도)==="휴직" && programState(pr,REF)==="현재")
     .filter(pr=>{ const p=PEOPLE.find(x=>x.사번===pr.사번); return p && isActive(p,REF); })
     .map(pr=>({pr,name:nameOf(pr.사번),dept:deptOf(pr.사번),type:pr.제도,start:pr.시작일,end:pr.종료일}))
     .sort((a,b)=>{ const ea=D(a.end), eb=D(b.end); if(!ea&&!eb) return 0; if(!ea) return 1; if(!eb) return -1; return ea-eb; });
@@ -632,7 +632,7 @@ function statusOf(p, ref){
   const inn=D(p.입사일), out=D(p.퇴사일);
   if(!inn || inn>ref) return "입사예정";
   if(out && ref>out) return "퇴사";
-  const onLeave = PROGRAMS.some(pr=>pr.사번===p.사번 && ["휴가","휴직"].includes(categoryOf(pr.제도)) && programState(pr,ref)==="현재");
+  const onLeave = PROGRAMS.some(pr=>pr.사번===p.사번 && categoryOf(pr.제도)==="휴직" && programState(pr,ref)==="현재");
   return onLeave?"휴직":"재직";
 }
 let rosterSort={key:null,dir:1};

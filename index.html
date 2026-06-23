@@ -111,12 +111,13 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .empty{color:var(--ink2);font-size:13px;padding:24px;text-align:center;background:var(--card);border:1px dashed var(--border);border-radius:12px}
 
 .cal-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
-.cal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+.cal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .cal-nav .mlabel{font-size:16px;font-weight:900}
 .cal-nav button{border:1px solid var(--border);background:var(--card);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px}
 .cal-nav button:focus-visible{outline:2px solid var(--main);outline-offset:2px}
-.cal-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.cal-table{width:100%;border-collapse:collapse;table-layout:fixed;flex:1 1 auto;height:100%}
+.cal-table tbody{height:100%}
 .cal-table th{font-size:11px;color:var(--ink2);font-weight:500;padding:6px 0}
 .cal-table td{height:62px;vertical-align:top;border:1px solid #f1f2f5;padding:4px;font-size:11px;position:relative}
 .cal-table td .d{color:var(--ink2);font-weight:500}

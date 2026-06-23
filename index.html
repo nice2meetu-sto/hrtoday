@@ -79,7 +79,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .seg{position:absolute;height:24px;top:50%;transform:translateY(-50%);border-radius:6px;font-size:11px;font-weight:500;color:#fff;display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden;cursor:default}
 .seg.future{opacity:.62;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 5px,transparent 5px 10px)}
 .nowline{position:absolute;top:0;bottom:0;width:2px;background:var(--warn);z-index:5}
-.nowline::after{content:"기준일";position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--warn);background:var(--bg);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.nowline::after{content:none}
 
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .chip{font-family:inherit;font-size:14px;font-weight:700;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:9px 18px;cursor:pointer}
@@ -112,10 +112,17 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .cal-nav button:focus-visible{outline:2px solid var(--main);outline-offset:2px}
 .cal-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .cal-table th{font-size:11px;color:var(--ink2);font-weight:500;padding:6px 0}
-.cal-table td{height:62px;vertical-align:top;border:1px solid #f1f2f5;padding:4px;font-size:11px}
+.cal-table td{height:62px;vertical-align:top;border:1px solid #f1f2f5;padding:4px;font-size:11px;position:relative}
 .cal-table td .d{color:var(--ink2);font-weight:500}
 .cal-table td.today{background:var(--main-soft)}
 .cal-table td.today .d{color:var(--main);font-weight:900}
+.cal-pop{display:none;position:absolute;z-index:30;top:100%;left:0;min-width:170px;max-width:260px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 22px rgba(0,0,0,.14);padding:9px 10px}
+.cal-table td:hover .cal-pop{display:block}
+.cal-pop-h{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.cal-pop-row{display:flex;align-items:center;gap:6px;padding:2px 0;font-size:11px;color:var(--ink);white-space:nowrap}
+.cal-pop-row i{width:8px;height:8px;border-radius:2px;flex-shrink:0;display:inline-block}
+.dpager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px;font-size:12px;color:var(--ink2)}
+.dpager .btn{padding:5px 10px;font-size:12px}
 .ev{display:block;font-size:10px;font-weight:500;color:#fff;border-radius:4px;padding:1px 4px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dlist h3{font-size:14px;font-weight:900;margin-bottom:12px}
 .dcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
@@ -125,6 +132,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .dcard .info .dt{font-size:11px;color:var(--ink2)}
 
 .rtop{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.rtop2{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;font-size:12px}
+.rtop2 .flab{font-weight:700;color:var(--ink2)}
+.rtop2 .sep{color:var(--ink2)}
+.dfilter{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:6px 8px;font-family:inherit;font-size:12px;color:var(--ink)}
+.dfilter:focus{outline:none;border-color:var(--main-line)}
+.rtable th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+.rtable th.sortable:hover{color:var(--main)}
+.rtable th.sortable .arr{color:var(--main);font-size:10px}
 .rtable{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .rtable th{background:#fafbfc;font-size:12px;color:var(--ink2);font-weight:700;text-align:left;padding:11px 14px;border-bottom:1px solid var(--border)}
 .rtable td{padding:10px 14px;border-bottom:1px solid #f1f2f5;font-size:13px}
@@ -216,10 +231,21 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
   <!-- TAB 2: 전체 명단 -->
   <section class="panel" id="p2">
     <div class="rtop">
-      <input class="search" id="rSearch" placeholder="이름·부서·사번 검색" oninput="renderRoster()">
+      <input class="search" id="rSearch" placeholder="전체 검색 (이름·부서·사번·직급·제도·날짜 등)" oninput="renderRoster()" style="width:300px">
       <div class="subchips" id="rFilters" style="margin:0"></div>
       <span class="cnt" id="rCnt" style="font-size:13px;color:var(--ink2)"></span>
       <button class="btn" style="margin-left:auto" onclick="exportCSV()">⤓ 엑셀(CSV)</button>
+    </div>
+    <div class="rtop2">
+      <span class="flab">입사일</span>
+      <input type="date" id="fHireFrom" class="dfilter" oninput="renderRoster()" aria-label="입사일 시작">
+      <span class="sep">~</span>
+      <input type="date" id="fHireTo" class="dfilter" oninput="renderRoster()" aria-label="입사일 종료">
+      <span class="flab" style="margin-left:8px">퇴사일</span>
+      <input type="date" id="fLeaveFrom" class="dfilter" oninput="renderRoster()" aria-label="퇴사일 시작">
+      <span class="sep">~</span>
+      <input type="date" id="fLeaveTo" class="dfilter" oninput="renderRoster()" aria-label="퇴사일 종료">
+      <button class="btn" onclick="clearDateFilters()">기간 초기화</button>
     </div>
     <div id="rosterWrap"></div>
   </section>
@@ -319,7 +345,7 @@ async function loadData(){
 const CATS = ["단축","휴가","휴직"];
 function categoryOf(name){
   name=name||"";
-  if(name.includes("단축")) return "단축";
+  if(name.includes("단축")||name.includes("육아시간")) return "단축";
   if(name.includes("휴가")||name.includes("산전후")) return "휴가";
   if(name.includes("휴직")) return "휴직";
   return "기타";
@@ -365,19 +391,19 @@ function tab(i){
 }
 
 function setToday(){ document.getElementById('refDate').value=today().toISOString().slice(0,10); onDate(); }
-function onDate(){ REF = D(document.getElementById('refDate').value) || today(); renderAll(); }
+function onDate(){ REF = D(document.getElementById('refDate').value) || today(); ddayPage=0; renderAll(); }
 document.getElementById('refDate').addEventListener('change', onDate);
 
 /* ---- KPI ---- */
 function renderKPIs(){
   const active = PEOPLE.filter(p=>isActive(p,REF));
-  const onLeave = active.filter(p=>PROGRAMS.some(pr=>pr.사번===p.사번 && ["휴가","휴직"].includes(categoryOf(pr.제도)) && programState(pr,REF)==="현재")).length;
-  const onShort = active.filter(p=>PROGRAMS.some(pr=>pr.사번===p.사번 && categoryOf(pr.제도)==="단축" && programState(pr,REF)==="현재")).length;
+  const working = active.filter(p=>statusOf(p,REF)==="재직").length;
+  const onLeave = active.filter(p=>statusOf(p,REF)==="휴직").length;
   const soon = upcomingEvents().filter(e=>e.dday>=0 && e.dday<=30).length;
   const k=[
-    {lab:"기준일 재직",num:active.length,sub:fmt(REF)+" 기준",accent:true},
-    {lab:"휴가·휴직 중",num:onLeave,sub:"산전후·육아·질병 등"},
-    {lab:"근로시간 단축 중",num:onShort,sub:"임신기·육아기"},
+    {lab:"전체",num:active.length,sub:fmt(REF)+" 기준 (재직+휴직)",accent:true},
+    {lab:"재직 중",num:working,sub:"정상 근무"},
+    {lab:"휴직 중",num:onLeave,sub:"휴가·휴직 부재"},
     {lab:"임박 일정 (30일)",num:soon,sub:"인사발령 대상"},
   ];
   document.getElementById('kpis').innerHTML = k.map(x=>
@@ -476,14 +502,25 @@ function allEvents(){
 function upcomingEvents(){
   return allEvents().map(e=>({...e,dday:days(REF,D(e.date))})).filter(e=>e.dday>=0).sort((a,b)=>a.dday-b.dday);
 }
+let ddayPage=0;
+const DDAY_PER=7;
+function ddayMove(n){ ddayPage+=n; renderDDay(); }
 function renderDDay(){
-  const list=upcomingEvents().slice(0,15);
-  document.getElementById('ddayList').innerHTML = list.length?list.map(e=>{
+  const all=upcomingEvents();
+  const pages=Math.max(1,Math.ceil(all.length/DDAY_PER));
+  if(ddayPage>pages-1) ddayPage=pages-1;
+  if(ddayPage<0) ddayPage=0;
+  const list=all.slice(ddayPage*DDAY_PER, ddayPage*DDAY_PER+DDAY_PER);
+  const cards = list.length?list.map(e=>{
     const cls=e.dday<=7?'urgent':e.dday<=30?'soon':'now';
     return `<div class="dcard"><span class="et" style="background:${e.color}">${e.type}</span>
       <div class="info"><div class="n">${e.name} <span style="font-weight:400;color:var(--ink2);font-size:11px">${e.dept}</span></div><div class="dt">${e.date}</div></div>
       <span class="dday ${cls}">D-${e.dday}</span></div>`;
   }).join(''):'<div class="empty">예정 일정이 없습니다.</div>';
+  const pager = all.length>DDAY_PER
+    ? `<div class="dpager"><button class="btn" ${ddayPage===0?'disabled':''} onclick="ddayMove(-1)">‹ 이전</button><span>${ddayPage+1} / ${pages} (총 ${all.length}건)</span><button class="btn" ${ddayPage>=pages-1?'disabled':''} onclick="ddayMove(1)">다음 ›</button></div>`
+    : '';
+  document.getElementById('ddayList').innerHTML = cards+pager;
 }
 
 /* ---- 캘린더 ---- */
@@ -500,9 +537,14 @@ function renderCal(){
     for(let c=0;c<7;c++,day++){
       if(day<1||day>dim){ html+='<td></td>'; continue; }
       const isToday=(y===REF.getFullYear()&&mo===REF.getMonth()&&day===REF.getDate());
-      const evs=(evByDay[day]||[]).slice(0,2).map(e=>`<span class="ev" style="background:${e.color}" title="${e.name} ${e.type}">${e.name} ${e.type}</span>`).join('');
-      const more=(evByDay[day]||[]).length-2;
-      html+=`<td class="${isToday?'today':''}"><span class="d">${day}</span>${evs}${more>0?`<span class="ev" style="background:#aab">+${more}</span>`:''}</td>`;
+      const dayEvs=evByDay[day]||[];
+      const evs=dayEvs.slice(0,2).map(e=>`<span class="ev" style="background:${e.color}" title="${e.name} ${e.type}">${e.name} ${e.type}</span>`).join('');
+      const more=dayEvs.length-2;
+      const pop=dayEvs.length>2
+        ? `<div class="cal-pop"><div class="cal-pop-h">${y}.${mo+1}.${day} · 일정 ${dayEvs.length}건</div>`+
+          dayEvs.map(e=>`<div class="cal-pop-row"><i style="background:${e.color}"></i>${e.name} ${e.type}</div>`).join('')+`</div>`
+        : '';
+      html+=`<td class="${isToday?'today':''}"><span class="d">${day}</span>${evs}${more>0?`<span class="ev" style="background:#aab">+${more}</span>`:''}${pop}</td>`;
     }
     html+='</tr>';
   }
@@ -518,13 +560,50 @@ function statusOf(p, ref){
   const onLeave = PROGRAMS.some(pr=>pr.사번===p.사번 && ["휴가","휴직"].includes(categoryOf(pr.제도)) && programState(pr,ref)==="현재");
   return onLeave?"휴직":"재직";
 }
+let rosterSort={key:null,dir:1};
+const gv = id => (document.getElementById(id)||{}).value||'';
+/* 한 사람의 모든 정보(인적사항·상태·보유 제도 전체)를 합친 검색 문자열 */
+function personHaystack(p){
+  const prog=PROGRAMS.filter(pr=>pr.사번===p.사번)
+    .map(pr=>[pr.제도,pr.시작일,pr.종료일,pr.상세,pr.비고].join(' ')).join(' ');
+  return [p.사번,p.사원명,p.부서,p.직급,p.고용형태,p.입사일,p.퇴사일,statusOf(p,REF),prog]
+    .join(' ').toLowerCase();
+}
+function sortRoster(arr){
+  const {key,dir}=rosterSort;
+  if(!key) return arr;
+  const getv={
+    사번:x=>{const n=parseInt(x.p.사번,10);return isNaN(n)?x.p.사번:n;},
+    직급:x=>{const m=String(x.p.직급||'').match(/\d+/);return m?+m[0]:999;},
+    입사일:x=>D(x.p.입사일),
+    퇴사일:x=>D(x.p.퇴사일),
+  }[key];
+  if(!getv) return arr;
+  return arr.slice().sort((a,b)=>{
+    let va=getv(a), vb=getv(b);
+    const na=(va==null||va===''), nb=(vb==null||vb==='');
+    if(na&&nb) return 0; if(na) return 1; if(nb) return -1;   // 빈 값은 항상 뒤로
+    if(va instanceof Date){ va=va.getTime(); vb=vb.getTime(); }
+    return (va>vb?1:va<vb?-1:0)*dir;
+  });
+}
 function rosterList(){
-  const q=(document.getElementById('rSearch').value||'').trim();
-  return PEOPLE.map(p=>({p,st:statusOf(p,REF)}))
+  const q=(document.getElementById('rSearch').value||'').trim().toLowerCase();
+  const hf=D(gv('fHireFrom')), ht=D(gv('fHireTo')), lf=D(gv('fLeaveFrom')), lt=D(gv('fLeaveTo'));
+  const list = PEOPLE.map(p=>({p,st:statusOf(p,REF)}))
     .filter(x=>rosterFilter==="전체"||x.st===rosterFilter)
-    .filter(x=>!q||x.p.사원명.includes(q)||x.p.부서.includes(q)||x.p.사번.includes(q));
+    .filter(x=>!q||personHaystack(x.p).includes(q))
+    .filter(x=>{
+      if(hf||ht){ const d=D(x.p.입사일); if(!d) return false; if(hf&&d<hf) return false; if(ht&&d>ht) return false; }
+      if(lf||lt){ const d=D(x.p.퇴사일); if(!d) return false; if(lf&&d<lf) return false; if(lt&&d>lt) return false; }
+      return true;
+    });
+  return sortRoster(list);
 }
 function setRosterFilter(f){ rosterFilter=f; renderRoster(); }
+function setSort(key){ if(rosterSort.key===key) rosterSort.dir*=-1; else { rosterSort.key=key; rosterSort.dir=1; } renderRoster(); }
+function sortArrow(key){ return rosterSort.key===key?`<span class="arr">${rosterSort.dir>0?'▲':'▼'}</span>`:''; }
+function clearDateFilters(){ ['fHireFrom','fHireTo','fLeaveFrom','fLeaveTo'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';}); renderRoster(); }
 function renderRoster(){
   const opts=["재직","휴직","퇴사","입사예정","전체"];
   document.getElementById('rFilters').innerHTML=opts.map(o=>`<button class="subchip ${rosterFilter===o?'on':''}" onclick="setRosterFilter('${o}')">${o}</button>`).join('');
@@ -534,7 +613,9 @@ function renderRoster(){
     const tags=cur.map(pr=>`<span class="tag" style="background:${colorOf(pr.제도)}" title="${pr.제도}${pr.상세?' '+pr.상세:''}&#10;${pr.시작일} ~ ${pr.종료일||'미정'}">${pr.제도}${pr.상세?' '+pr.상세:''}</span>`).join('')||'<span style="color:var(--ink2)">—</span>';
     return `<tr><td><span class="statuschip st-${st}">${st}</span></td><td>${p.사번}</td><td style="font-weight:700">${p.사원명}</td><td>${p.부서}</td><td>${p.직급}</td><td>${p.고용형태}</td><td>${p.입사일}</td><td>${p.퇴사일||'—'}</td><td>${tags}</td></tr>`;
   }).join('');
-  document.getElementById('rosterWrap').innerHTML=`<table class="rtable"><thead><tr><th>상태</th><th>사번</th><th>사원명</th><th>부서</th><th>직급</th><th>고용형태</th><th>입사일</th><th>퇴사일</th><th>현재 사용 제도</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--ink2);padding:28px">해당 인원이 없습니다.</td></tr>'}</tbody></table>`;
+  const th=(label,key)=>key?`<th class="sortable" onclick="setSort('${key}')">${label}${sortArrow(key)}</th>`:`<th>${label}</th>`;
+  const head=`<tr>${th('상태')}${th('사번','사번')}${th('사원명')}${th('부서')}${th('직급','직급')}${th('고용형태')}${th('입사일','입사일')}${th('퇴사일','퇴사일')}${th('현재 사용 제도')}</tr>`;
+  document.getElementById('rosterWrap').innerHTML=`<table class="rtable"><thead>${head}</thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--ink2);padding:28px">해당 인원이 없습니다.</td></tr>'}</tbody></table>`;
   document.getElementById('rCnt').textContent=`${list.length}명 (${fmt(REF)} · ${rosterFilter})`;
 }
 

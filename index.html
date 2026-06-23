@@ -470,8 +470,8 @@ function renderKPIs(){
   const onLeave = active.filter(p=>statusOf(p,REF)==="휴직").length;
   const soon = upcomingEvents().filter(e=>e.dday>=0 && e.dday<=30).length;
   const k=[
-    {lab:"현원(재직+휴직)",num:active.length,sub:fmt(REF)+" 기준",accent:true},
-    {lab:"재직",num:working},
+    {lab:"총원(재직+휴직)",num:active.length,sub:fmt(REF)+" 기준",accent:true},
+    {lab:"현원",num:working,sub:fmt(REF)+" 사고 인원 제외",accent:true},
     {lab:"휴직",num:onLeave},
     {lab:"임박 일정 (30일)",num:soon},
   ];

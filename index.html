@@ -306,15 +306,15 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxPCYz4EQY374MzApC1g
 /* 내장 샘플 데이터 (SCRIPT_URL 미설정 시 표시) — 구글시트 양식과 동일 */
 const SAMPLE_PEOPLE = [
   {사번:"1001",사원명:"김도윤",부서:"마케팅팀",직급:"5급",고용형태:"일반직",입사일:"2016-03-02",퇴사일:""},
-  {사번:"1008",사원명:"윤하준",부서:"경영지원팀",직급:"6급",고용형태:"일반직",입사일:"2019-05-02",퇴사일:"2026-05-31"},
+  {사번:"1008",사원명:"윤하준",부서:"경영지원팀",직급:"6급",고용형태:"일반직",입사일:"2019-05-02",퇴사일:"2026-05-31",비고:"의원면직"},
   {사번:"1023",사원명:"이서연",부서:"관광콘텐츠팀",직급:"5급",고용형태:"일반직",입사일:"2018-09-01",퇴사일:""},
   {사번:"1044",사원명:"박지호",부서:"경영지원팀",직급:"4급",고용형태:"일반직",입사일:"2014-01-06",퇴사일:""},
   {사번:"1075",사원명:"최민서",부서:"MICE팀",직급:"6급",고용형태:"일반직",입사일:"2021-07-01",퇴사일:""},
   {사번:"1090",사원명:"정하늘",부서:"관광콘텐츠팀",직급:"6급",고용형태:"일반직",입사일:"2020-02-03",퇴사일:""},
-  {사번:"1112",사원명:"한유진",부서:"마케팅팀",직급:"기간제",고용형태:"기간제",입사일:"2024-04-01",퇴사일:"2026-07-31"},
+  {사번:"1112",사원명:"한유진",부서:"마케팅팀",직급:"기간제",고용형태:"기간제",입사일:"2024-04-01",퇴사일:"2026-07-31",비고:"계약기간 만료"},
   {사번:"1130",사원명:"오세훈",부서:"경영지원팀",직급:"5급",고용형태:"일반직",입사일:"2017-11-13",퇴사일:""},
   {사번:"1141",사원명:"신예린",부서:"MICE팀",직급:"6급",고용형태:"일반직",입사일:"2022-08-16",퇴사일:""},
-  {사번:"9001",사원명:"강시우",부서:"마케팅팀",직급:"6급",고용형태:"일반직",입사일:"2026-08-01",퇴사일:""},
+  {사번:"9001",사원명:"강시우",부서:"마케팅팀",직급:"6급",고용형태:"일반직",입사일:"2026-08-01",퇴사일:"",비고:"신규채용(공채)"},
 ];
 const SAMPLE_PROGRAMS = [
   {사번:"1023",제도:"임신기 근로시간 단축",시작일:"2026-05-01",종료일:"2026-10-07",상세:"10:00–17:00",비고:""},
@@ -641,7 +641,7 @@ const gv = id => (document.getElementById(id)||{}).value||'';
 function personHaystack(p){
   const prog=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,REF)==="현재")
     .map(pr=>[pr.제도,pr.시작일,pr.종료일,pr.상세,pr.비고].join(' ')).join(' ');
-  return [p.사번,p.사원명,p.부서,p.직급,p.고용형태,p.입사일,p.퇴사일,statusOf(p,REF),prog]
+  return [p.사번,p.사원명,p.부서,p.직급,p.고용형태,p.입사일,p.퇴사일,p.비고,statusOf(p,REF),prog]
     .join(' ').toLowerCase();
 }
 function sortRoster(arr){
@@ -682,15 +682,17 @@ function clearDateFilters(){ ['fHireFrom','fHireTo','fLeaveFrom','fLeaveTo'].for
 function renderRoster(){
   const opts=["현원","재직","휴직","퇴사","입사예정","전체"];
   document.getElementById('rFilters').innerHTML=opts.map(o=>`<button class="subchip ${rosterFilter===o?'on':''}" onclick="setRosterFilter('${o}')">${o}</button>`).join('');
-  const showLeave=["퇴사","전체"].includes(rosterFilter);   // 퇴사일 컬럼은 퇴사·전체에서만
+  const showLeave=["퇴사","전체"].includes(rosterFilter);    // 퇴사일 컬럼은 퇴사·전체에서만
+  const showRemark=["퇴사","입사예정"].includes(rosterFilter); // 퇴사·입사예정에선 '현재 사용 제도' 대신 '비고'
   const list=rosterList();
   const rows=list.map(({p,st})=>{
     const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,REF)==='현재');
     const tags=cur.map(pr=>`<span class="tag" style="background:${colorOf(pr.제도)}" title="${pr.제도}${pr.상세?' '+pr.상세:''}&#10;${pr.시작일} ~ ${pr.종료일||'미정'}">${pr.제도}${pr.상세?' '+pr.상세:''}</span>`).join('')||'<span style="color:var(--ink2)">—</span>';
-    return `<tr><td><span class="statuschip st-${st}">${st}</span></td><td>${p.사번}</td><td style="font-weight:700">${p.사원명}</td><td>${p.부서}</td><td>${p.직급}</td><td>${p.고용형태}</td><td>${p.입사일}</td>${showLeave?`<td>${p.퇴사일||'—'}</td>`:''}<td>${tags}</td></tr>`;
+    const lastCell = showRemark ? `<td>${p.비고||'<span style="color:var(--ink2)">—</span>'}</td>` : `<td>${tags}</td>`;
+    return `<tr><td><span class="statuschip st-${st}">${st}</span></td><td>${p.사번}</td><td style="font-weight:700">${p.사원명}</td><td>${p.부서}</td><td>${p.직급}</td><td>${p.고용형태}</td><td>${p.입사일}</td>${showLeave?`<td>${p.퇴사일||'—'}</td>`:''}${lastCell}</tr>`;
   }).join('');
   const th=(label,key)=>key?`<th class="sortable" onclick="setSort('${key}')">${label}${sortArrow(key)}</th>`:`<th>${label}</th>`;
-  const head=`<tr>${th('상태')}${th('사번','사번')}${th('사원명')}${th('부서')}${th('직급','직급')}${th('고용형태')}${th('입사일','입사일')}${showLeave?th('퇴사일','퇴사일'):''}${th('현재 사용 제도')}</tr>`;
+  const head=`<tr>${th('상태')}${th('사번','사번')}${th('사원명')}${th('부서')}${th('직급','직급')}${th('고용형태')}${th('입사일','입사일')}${showLeave?th('퇴사일','퇴사일'):''}${showRemark?th('비고'):th('현재 사용 제도')}</tr>`;
   const cols=showLeave?9:8;
   document.getElementById('rosterWrap').innerHTML=`<table class="rtable"><thead>${head}</thead><tbody>${rows||`<tr><td colspan="${cols}" style="text-align:center;color:var(--ink2);padding:28px">해당 인원이 없습니다.</td></tr>`}</tbody></table>`;
   document.getElementById('rCnt').textContent=`${list.length}명 (${fmt(REF)} · ${rosterFilter})`;

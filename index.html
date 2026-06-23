@@ -427,7 +427,7 @@ let REF = today();
 const fmt = d => d.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\. /g,'.').replace(/\.$/,'');
 const days = (a,b) => Math.round((b-a)/86400000);
 const ddText = n => n===0 ? 'D-day' : 'D-'+n;   // 당일은 D-day 로 표기
-const nameOf = sb => (PEOPLE.find(p=>p.사번===sb)||{}).사원명||"";
+const nameOf = sb => (PEOPLE.find(p=>p.사번===sb)||{}).사원명 || "(이름없음)";  // 인원 시트에 사번 없으면 표기
 const deptOf = sb => (PEOPLE.find(p=>p.사번===sb)||{}).부서||"";
 
 function isActive(p, ref){

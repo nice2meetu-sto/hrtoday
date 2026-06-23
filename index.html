@@ -160,6 +160,35 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 
 .note{font-size:12px;color:var(--ink2);background:#fff;border:1px dashed var(--border);border-radius:10px;padding:12px 16px;margin-top:18px;line-height:1.7}
 .note b{color:var(--ink)}
+
+/* ===== 호버 효과 ===== */
+.tab{transition:color .15s,background .15s}
+.tab:not(.on):hover{color:var(--ink);background:var(--main-soft)}
+.subchip{transition:.15s}
+.subchip:not(.on):hover{border-color:var(--main-line);color:var(--main);background:var(--main-soft)}
+.chip{transition:.15s}
+.chip:not(.on):hover{border-color:var(--main-line);background:var(--main-soft)}
+.kpi{transition:border-color .15s,box-shadow .15s,transform .15s}
+.kpi:hover{box-shadow:0 5px 16px rgba(40,42,55,.08)}
+.kpi.leavebox:hover{transform:translateY(-1px)}
+.prow{transition:border-color .15s,box-shadow .15s}
+.prow:hover{border-color:var(--main-line);box-shadow:0 4px 12px rgba(83,74,183,.10)}
+.dcard{transition:border-color .15s,box-shadow .15s}
+.dcard:hover{border-color:var(--main-line);box-shadow:0 4px 12px rgba(83,74,183,.10)}
+.cal,.tlcard{transition:box-shadow .15s}
+.cal:hover,.tlcard:hover{box-shadow:0 5px 18px rgba(40,42,55,.06)}
+.cal-nav button{transition:.15s}
+.cal-nav button:hover{background:var(--main-soft);border-color:var(--main-line)}
+.cal-table td{transition:background .12s}
+.cal-table td:hover{background:#f1eefb}
+.seg{transition:filter .15s}
+.seg:hover{filter:brightness(1.07)}
+.search,.dfilter{transition:border-color .15s,box-shadow .15s}
+.search:hover,.dfilter:hover{border-color:var(--main-line)}
+/* 테이블 행 음영(명단·휴직자·예정자) */
+.rtable tbody tr{transition:background .12s}
+.rtable tbody tr:hover{background:var(--main-soft)}
+
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.cal-grid{grid-template-columns:1fr}.tl-scale{margin-left:130px}.tl-name{width:130px}}
 </style>
 </head>

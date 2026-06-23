@@ -185,10 +185,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 <div class="wrap">
   <div class="tabs">
     <button class="tab on" onclick="tab(0)">기준일 현황</button>
-    <button class="tab" onclick="tab(1)">휴직자</button>
-    <button class="tab" onclick="tab(2)">예정자</button>
-    <button class="tab" onclick="tab(3)">제도별 조회</button>
-    <button class="tab" onclick="tab(4)">전체 명단</button>
+    <button class="tab" onclick="tab(1)">전체 명단</button>
+    <button class="tab" onclick="tab(2)">휴직자</button>
+    <button class="tab" onclick="tab(3)">예정자</button>
+    <button class="tab" onclick="tab(4)">제도별 조회</button>
     <button class="tab" onclick="tab(5)">타임라인</button>
   </div>
 
@@ -408,9 +408,11 @@ function programState(pr, ref){
   return "현재";
 }
 
+/* 탭 순서 → 패널 id 매핑 (패널 DOM 순서와 무관하게 표시) */
+const TAB_PANELS=['p0','p2','pLeave','pUpcoming','p1','p3'];
 function tab(i){
   document.querySelectorAll('.tab').forEach((t,n)=>t.classList.toggle('on',n===i));
-  document.querySelectorAll('.panel').forEach((p,n)=>p.classList.toggle('on',n===i));
+  TAB_PANELS.forEach((id,n)=>{ const el=document.getElementById(id); if(el) el.classList.toggle('on',n===i); });
 }
 
 function setToday(){ document.getElementById('refDate').value=today().toISOString().slice(0,10); onDate(); }

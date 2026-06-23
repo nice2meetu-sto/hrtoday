@@ -55,6 +55,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .kpi .lab{font-size:12px;color:var(--ink2);font-weight:500;margin-bottom:6px}
 .kpi .num{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1}
 .kpi .sub{font-size:11px;color:var(--ink2);margin-top:6px}
+.kpi .numsub{font-size:11px;font-weight:500;color:var(--ink2);margin-left:8px;letter-spacing:0}
 .kpi.accent .num{color:var(--main)}
 .kpi.leavebox{cursor:pointer;text-align:left;font-family:inherit;width:100%;transition:.15s}
 .kpi.leavebox:hover{border-color:var(--main-line);background:var(--main-soft)}
@@ -460,12 +461,12 @@ function renderKPIs(){
   const soon = upcomingEvents().filter(e=>e.dday>=0 && e.dday<=30).length;
   const k=[
     {lab:"현원",num:active.length,sub:fmt(REF)+" 기준 (재직+휴직)",accent:true},
-    {lab:"재직",num:working,sub:"정상 근무"},
-    {lab:"휴직",num:onLeave,sub:"육아·질병 등 휴직"},
-    {lab:"임박 일정 (30일)",num:soon,sub:"인사발령 대상"},
+    {lab:"재직",num:working},
+    {lab:"휴직",num:onLeave},
+    {lab:"임박 일정 (30일)",num:soon},
   ];
   document.getElementById('kpis').innerHTML = k.map(x=>
-    `<div class="kpi ${x.accent?'accent':''}"><div class="lab">${x.lab}</div><div class="num">${x.num}</div><div class="sub">${x.sub}</div></div>`).join('');
+    `<div class="kpi ${x.accent?'accent':''}"><div class="lab">${x.lab}</div><div class="num">${x.num}${x.sub?`<span class="numsub">${x.sub}</span>`:''}</div></div>`).join('');
 }
 
 /* ---- 타임라인 ---- */

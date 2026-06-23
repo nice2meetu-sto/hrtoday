@@ -318,6 +318,7 @@ async function loadData(){
 /* ---- 대분류 자동 판별 ---- */
 const CATS = ["단축","휴가","휴직"];
 function categoryOf(name){
+  name=name||"";
   if(name.includes("단축")) return "단축";
   if(name.includes("휴가")||name.includes("산전후")) return "휴가";
   if(name.includes("휴직")) return "휴직";
@@ -329,7 +330,16 @@ const colorOf = name => CAT_COLOR[categoryOf(name)];
 const presentCats = () => CATS.filter(c=>PROGRAMS.some(p=>categoryOf(p.제도)===c));
 
 /* ---- 날짜 유틸 ---- */
-const D = s => s ? new Date(s+"T00:00:00") : null;
+/* 빈칸·다양한 표기(YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD, "2026. 5. 1" 등)를
+   모두 받아 로컬 자정 Date 로 변환. 해석 불가/빈칸이면 null 반환. */
+const D = s => {
+  if(s==null) return null;
+  const t=String(s).trim();
+  if(!t) return null;
+  const m=t.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  const d = m ? new Date(+m[1], +m[2]-1, +m[3]) : new Date(t);
+  return isNaN(d.getTime()) ? null : d;
+};
 const today = () => new Date(new Date().toISOString().slice(0,10)+"T00:00:00");
 let REF = today();
 const fmt = d => d.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\. /g,'.').replace(/\.$/,'');
@@ -343,6 +353,7 @@ function isActive(p, ref){
 }
 function programState(pr, ref){
   const s=D(pr.시작일), e=D(pr.종료일)||new Date(8640000000000000);
+  if(!s) return "종료";              // 시작일이 비었거나 해석 불가하면 집계 제외
   if(ref<s) return "예정";
   if(ref>e) return "종료";
   return "현재";
@@ -381,7 +392,7 @@ function renderTimeline(){
   const [ws,we]=tlWindow();
   const q=(document.getElementById('tlSearch').value||'').trim();
   const rows = PEOPLE.filter(p=>isActive(p,REF) || (D(p.입사일)>REF && D(p.입사일)<=we))
-    .filter(p=>PROGRAMS.some(x=>x.사번===p.사번 && D(x.시작일)<=we && (!x.종료일||D(x.종료일)>=ws)))
+    .filter(p=>PROGRAMS.some(x=>x.사번===p.사번 && D(x.시작일) && D(x.시작일)<=we && (!x.종료일||D(x.종료일)>=ws)))
     .filter(p=> !q || p.사원명.includes(q) || p.부서.includes(q));
 
   let scale='', m=new Date(ws.getFullYear(),ws.getMonth(),1);
@@ -391,13 +402,13 @@ function renderTimeline(){
   const nowX=pct(REF,[ws,we]);
   let body='';
   rows.forEach(p=>{
-    const prs=PROGRAMS.filter(x=>x.사번===p.사번 && D(x.시작일)<=we && (!x.종료일||D(x.종료일)>=ws));
+    const prs=PROGRAMS.filter(x=>x.사번===p.사번 && D(x.시작일) && D(x.시작일)<=we && (!x.종료일||D(x.종료일)>=ws));
     let segs=`<div class="nowline" style="left:${nowX}%"></div>`;
     prs.forEach(pr=>{
       const s=D(pr.시작일), e=D(pr.종료일)||we;
       const L=pct(s,[ws,we]), R=pct(e,[ws,we]);
       const st=programState(pr,REF);
-      const label=pr.제도.replace("근로시간 ","");
+      const label=(pr.제도||"").replace("근로시간 ","");
       segs+=`<div class="seg ${st==='예정'?'future':''}" style="left:${L}%;width:${Math.max(R-L,2)}%;background:${colorOf(pr.제도)}" title="${pr.제도} (${pr.시작일}~${pr.종료일||'미정'})${pr.상세?' · '+pr.상세:''}">${label}${pr.상세?' '+pr.상세:''}</div>`;
     });
     body+=`<div class="tl-row"><div class="tl-name"><div class="nm">${p.사원명}</div><div class="meta">${p.부서} · ${p.직급}</div></div><div class="tl-track">${segs}</div></div>`;
@@ -449,15 +460,16 @@ function renderProgram(){
 /* ---- 인사발령 이벤트 ---- */
 function allEvents(){
   const ev=[];
+  const push=o=>{ if(D(o.date)) ev.push(o); };  // 날짜가 유효한 이벤트만 수집
   PEOPLE.forEach(p=>{
-    if(D(p.입사일)>=today()) ev.push({date:p.입사일,type:"입사예정",name:p.사원명,dept:p.부서,color:"#4a8c5c"});
-    if(p.퇴사일) ev.push({date:p.퇴사일,type:"퇴사",name:p.사원명,dept:p.부서,color:"#A32D2D"});
+    if(D(p.입사일) && D(p.입사일)>=today()) push({date:p.입사일,type:"입사예정",name:p.사원명,dept:p.부서,color:"#4a8c5c"});
+    if(p.퇴사일) push({date:p.퇴사일,type:"퇴사",name:p.사원명,dept:p.부서,color:"#A32D2D"});
   });
   PROGRAMS.forEach(pr=>{
     const cat=categoryOf(pr.제도);
-    const lbl = cat==="휴직"?"휴직 시작":cat==="휴가"?(pr.제도.includes("산전후")?"산전후 시작":"휴가 시작"):"단축 시작";
-    ev.push({date:pr.시작일,type:lbl,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:colorOf(pr.제도)});
-    if(pr.종료일 && cat==="휴직") ev.push({date:pr.종료일,type:"복직(휴직종료)",name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
+    const lbl = cat==="휴직"?"휴직 시작":cat==="휴가"?((pr.제도||"").includes("산전후")?"산전후 시작":"휴가 시작"):"단축 시작";
+    push({date:pr.시작일,type:lbl,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:colorOf(pr.제도)});
+    if(pr.종료일 && cat==="휴직") push({date:pr.종료일,type:"복직(휴직종료)",name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
   });
   return ev;
 }
@@ -482,7 +494,7 @@ function renderCal(){
   document.getElementById('calLabel').textContent=`${y}년 ${mo+1}월`;
   const start=new Date(y,mo,1).getDay(), dim=new Date(y,mo+1,0).getDate();
   const evByDay={};
-  allEvents().forEach(e=>{ const d=D(e.date); if(d.getFullYear()===y && d.getMonth()===mo){ (evByDay[d.getDate()]=evByDay[d.getDate()]||[]).push(e);} });
+  allEvents().forEach(e=>{ const d=D(e.date); if(d && d.getFullYear()===y && d.getMonth()===mo){ (evByDay[d.getDate()]=evByDay[d.getDate()]||[]).push(e);} });
   let html='', day=1-start;
   for(let r=0;r<6;r++){ if(day>dim)break; html+='<tr>';
     for(let c=0;c<7;c++,day++){

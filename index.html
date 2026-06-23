@@ -488,7 +488,7 @@ function allEvents(){
   const ev=[];
   const push=o=>{ if(D(o.date)) ev.push(o); };  // 날짜가 유효한 이벤트만 수집
   PEOPLE.forEach(p=>{
-    if(D(p.입사일) && D(p.입사일)>=today()) push({date:p.입사일,type:"입사예정",name:p.사원명,dept:p.부서,color:"#4a8c5c"});
+    if(D(p.입사일)) push({date:p.입사일,type:(D(p.입사일)>REF?"입사예정":"입사"),name:p.사원명,dept:p.부서,color:"#4a8c5c"});
     if(p.퇴사일) push({date:p.퇴사일,type:"퇴사",name:p.사원명,dept:p.부서,color:"#A32D2D"});
   });
   PROGRAMS.forEach(pr=>{

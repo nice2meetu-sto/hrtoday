@@ -198,15 +198,17 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .staff-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
 .staff-table{border-collapse:collapse;font-size:12px;width:100%;min-width:760px}
 .staff-table th,.staff-table td{border:1px solid var(--border);padding:6px 9px;text-align:center;white-space:nowrap}
-.staff-table th{background:var(--main-soft);color:var(--ink);font-weight:700}
+.staff-table th{background:#edeef1;color:var(--ink);font-weight:700}
 .staff-table tbody td:first-child,.staff-table th:first-child{position:sticky;left:0;z-index:1;text-align:left;font-weight:700}
 .staff-table tbody td:first-child{background:var(--card)}
-.staff-table tbody tr:hover td{background:#f1eefb}
-.staff-table tbody tr:hover td:first-child{background:#f1eefb}
-.staff-table .sumcol{font-weight:800;background:#f3f1fb}
-.staff-table .sumrow td{font-weight:900;background:#f1eefb}
+.staff-table tbody tr:hover td{background:#e9ebef}
+.staff-table tbody tr:hover td:first-child{background:#e9ebef}
+.staff-table .sumcol{font-weight:800}
+.staff-table .sumrow td{font-weight:900;background:#eef0f3}
 .staff-table .neg{color:var(--warn)}
-/* 직급별 표 팀 행 음영(표시순서 구간별) */
+/* 정현원 표: 소계/총계 열 강조(옅은 회색). 직급별 표는 행 음영과 한 줄로 이어지도록 sumcol 배경 없음 */
+#staffQuotaTbl .sumcol{background:#eef0f3}
+/* 직급별 표 팀 행 음영(표시순서 구간별) — 소계/총계 포함 한 줄 동일 색 */
 .staff-table .shade-y td,.staff-table .shade-y td:first-child{background:#fcf6db}
 .staff-table .shade-o td,.staff-table .shade-o td:first-child{background:#fbe9d6}
 .staff-table .shade-g td,.staff-table .shade-g td:first-child{background:#e8f4e4}

@@ -571,11 +571,14 @@ function evPriority(e){
   }
   return 9;
 }
+/* 같은 날짜 내 2차 정렬: 유형 우선순위 → 사번 (예정자/D-day/캘린더 공통) */
+function evSecondary(a,b){
+  return evPriority(a)-evPriority(b)
+    || String(a.사번||'').localeCompare(String(b.사번||''),undefined,{numeric:true});
+}
 function upcomingEvents(){
   return allEvents().map(e=>({...e,dday:days(REF,D(e.date))})).filter(e=>e.dday>=0)
-    .sort((a,b)=> a.dday-b.dday
-      || evPriority(a)-evPriority(b)
-      || String(a.사번||'').localeCompare(String(b.사번||''),undefined,{numeric:true}));
+    .sort((a,b)=> a.dday-b.dday || evSecondary(a,b));
 }
 let ddayPage=0;
 const DDAY_PER=7;
@@ -659,6 +662,7 @@ function renderCal(){
   const start=new Date(y,mo,1).getDay(), dim=new Date(y,mo+1,0).getDate();
   const evByDay={};
   allEvents().forEach(e=>{ const d=D(e.date); if(d && d.getFullYear()===y && d.getMonth()===mo){ (evByDay[d.getDate()]=evByDay[d.getDate()]||[]).push(e);} });
+  Object.values(evByDay).forEach(arr=>arr.sort(evSecondary));   // 칸 내부도 유형 우선순위 → 사번 순
   let html='', day=1-start;
   for(let r=0;r<6;r++){ if(day>dim)break; html+='<tr>';
     for(let c=0;c<7;c++,day++){

@@ -468,10 +468,13 @@ function renderKPIs(){
   const active = PEOPLE.filter(p=>isActive(p,REF));
   const working = active.filter(p=>statusOf(p,REF)==="재직").length;
   const onLeave = active.filter(p=>statusOf(p,REF)==="휴직").length;
+  // 파견 = 현재 '파견' 제도를 사용 중인 재직자(상태상 휴직과 중복되지 않음)
+  const onDispatch = active.filter(p=>statusOf(p,REF)==="재직"
+    && PROGRAMS.some(pr=>pr.사번===p.사번 && (pr.제도||"").includes("파견") && programState(pr,REF)==="현재")).length;
   const soon = upcomingEvents().filter(e=>e.dday>=0 && e.dday<=30).length;
   const k=[
     {lab:"총원",num:active.length,sub:fmt(REF)+" 기준",accent:true},
-    {lab:"현원",num:working,sub:" 사고 인원 제외",accent:true},
+    {lab:"현원",num:working-onDispatch,sub:" 사고 인원 제외",accent:true},  // 총원 - 휴직 - 파견
     {lab:"휴직",num:onLeave},
     {lab:"임박 일정 (30일)",num:soon},
   ];

@@ -291,6 +291,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
       <button class="btn" style="margin-left:auto" onclick="exportCSV()">⤓ 엑셀(CSV)</button>
     </div>
     <div class="rtop2">
+      <span class="flab">고용형태</span>
+      <div class="subchips" id="empFilters" style="margin:0;display:inline-flex"></div>
+      <span class="sep" style="margin:0 6px">|</span>
       <span class="flab">입사일</span>
       <input type="date" id="fHireFrom" class="dfilter" oninput="renderRoster()" aria-label="입사일 시작">
       <span class="sep">~</span>
@@ -695,6 +698,7 @@ function statusOf(p, ref){
   return onLeave?"휴직":"재직";
 }
 let rosterSort={key:null,dir:1};
+let empFilter="전체";   // 고용형태: 전체 / 정규직 / 기간제
 const gv = id => (document.getElementById(id)||{}).value||'';
 /* 한 사람의 정보(인적사항·상태) + '기준일에 현재 사용 중'인 제도만 합친 검색 문자열 */
 function personHaystack(p){
@@ -726,6 +730,7 @@ function rosterList(){
   const hf=D(gv('fHireFrom')), ht=D(gv('fHireTo')), lf=D(gv('fLeaveFrom')), lt=D(gv('fLeaveTo'));
   const list = PEOPLE.map(p=>({p,st:statusOf(p,REF)}))
     .filter(x=>rosterFilter==="전체" || (rosterFilter==="현원"?["재직","휴직"].includes(x.st):x.st===rosterFilter))
+    .filter(x=> empFilter==="전체" || (empFilter==="기간제" ? x.p.고용형태==="기간제" : x.p.고용형태!=="기간제"))
     .filter(x=>!q||personHaystack(x.p).includes(q))
     .filter(x=>{
       if(hf||ht){ const d=D(x.p.입사일); if(!d) return false; if(hf&&d<hf) return false; if(ht&&d>ht) return false; }
@@ -735,12 +740,15 @@ function rosterList(){
   return sortRoster(list);
 }
 function setRosterFilter(f){ rosterFilter=f; renderRoster(); }
+function setEmpFilter(f){ empFilter=f; renderRoster(); }
 function setSort(key){ if(rosterSort.key===key) rosterSort.dir*=-1; else { rosterSort.key=key; rosterSort.dir=1; } renderRoster(); }
 function sortArrow(key){ return rosterSort.key===key?`<span class="arr">${rosterSort.dir>0?'▲':'▼'}</span>`:''; }
 function clearDateFilters(){ ['fHireFrom','fHireTo','fLeaveFrom','fLeaveTo'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';}); renderRoster(); }
 function renderRoster(){
   const opts=["현원","재직","휴직","퇴사","입사예정","전체"];
   document.getElementById('rFilters').innerHTML=opts.map(o=>`<button class="subchip ${rosterFilter===o?'on':''}" onclick="setRosterFilter('${o}')">${o}</button>`).join('');
+  const empOpts=["전체","정규직","기간제"];
+  const ef=document.getElementById('empFilters'); if(ef) ef.innerHTML=empOpts.map(o=>`<button class="subchip ${empFilter===o?'on':''}" onclick="setEmpFilter('${o}')">${o}</button>`).join('');
   const showLeave=["퇴사","전체"].includes(rosterFilter);    // 퇴사일 컬럼은 퇴사·전체에서만
   const showRemark=["퇴사","입사예정"].includes(rosterFilter); // 퇴사·입사예정에선 '현재 사용 제도' 대신 '비고'
   const list=rosterList();

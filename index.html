@@ -191,6 +191,22 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .rtable tbody tr{transition:background .12s}
 .rtable tbody tr:hover{background:#f1eefb}
 
+/* 인원현황표 */
+.staff-note{font-size:12px;color:var(--amber);margin:0 0 10px}
+.staff-h{font-size:15px;font-weight:900;margin:20px 0 8px}
+.staff-h:first-of-type{margin-top:6px}
+.staff-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.staff-table{border-collapse:collapse;font-size:12px;width:100%;min-width:760px}
+.staff-table th,.staff-table td{border:1px solid var(--border);padding:6px 9px;text-align:center;white-space:nowrap}
+.staff-table th{background:var(--main-soft);color:var(--ink);font-weight:700}
+.staff-table tbody td:first-child,.staff-table th:first-child{position:sticky;left:0;z-index:1;text-align:left;font-weight:700}
+.staff-table tbody td:first-child{background:var(--card)}
+.staff-table tbody tr:hover td{background:#f1eefb}
+.staff-table tbody tr:hover td:first-child{background:#f1eefb}
+.staff-table .sumcol{font-weight:800;background:#f3f1fb}
+.staff-table .sumrow td{font-weight:900;background:#f1eefb}
+.staff-table .neg{color:var(--warn)}
+
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.cal-grid{grid-template-columns:1fr}.tl-scale{margin-left:130px}.tl-name{width:130px}}
 </style>
 </head>
@@ -216,11 +232,12 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 <div class="wrap">
   <div class="tabs">
     <button class="tab on" onclick="tab(0)">기준일 현황</button>
-    <button class="tab" onclick="tab(1)">전체 명단</button>
-    <button class="tab" onclick="tab(2)">휴직자</button>
-    <button class="tab" onclick="tab(3)">예정자</button>
-    <button class="tab" onclick="tab(4)">제도별 조회</button>
-    <button class="tab" onclick="tab(5)">타임라인</button>
+    <button class="tab" onclick="tab(1)">인원현황표</button>
+    <button class="tab" onclick="tab(2)">전체 명단</button>
+    <button class="tab" onclick="tab(3)">휴직자</button>
+    <button class="tab" onclick="tab(4)">예정자</button>
+    <button class="tab" onclick="tab(5)">제도별 조회</button>
+    <button class="tab" onclick="tab(6)">타임라인</button>
   </div>
 
   <!-- TAB 0: 기준일 현황 (KPI + 캘린더) -->
@@ -243,6 +260,19 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
         <div id="ddayList"></div>
       </div>
     </div>
+  </section>
+
+  <!-- TAB: 인원현황표 (직급별 + 정현원, 항상 조회일(KST) 기준) -->
+  <section class="panel" id="pStaff">
+    <div class="tl-head">
+      <div class="tl-title">인원현황표 <span id="staffAsOf" style="color:var(--ink2);font-weight:500;font-size:13px"></span></div>
+      <button class="btn" onclick="exportStaffStats()">⤓ 엑셀(CSV)</button>
+    </div>
+    <p class="staff-note" id="staffNote" style="display:none"></p>
+    <h3 class="staff-h">○ 직급별 인원 현황</h3>
+    <div class="staff-wrap"><table class="staff-table" id="staffRankTbl"></table></div>
+    <h3 class="staff-h">○ 정현원 현황</h3>
+    <div class="staff-wrap"><table class="staff-table" id="staffQuotaTbl"></table></div>
   </section>
 
   <!-- TAB: 휴직자 -->
@@ -362,6 +392,7 @@ const SAMPLE_PROGRAMS = [
 ];
 
 let PEOPLE = [], PROGRAMS = [];
+let TEAMORDER = [], QUOTA = {};   // 인원현황표용: '팀 순서' / '정원' 시트
 /* ▲▲▲ 설정/데이터 영역 끝 ▲▲▲ */
 
 /* ---- 상태 메시지 ---- */
@@ -388,6 +419,8 @@ async function loadData(){
     const j=await res.json();
     if(!j.ok) throw new Error(j.error||'알 수 없는 오류');
     PEOPLE=j.data.인원||[]; PROGRAMS=j.data.제도||[];
+    TEAMORDER=parseTeamOrder(j.data['팀 순서']||j.data.팀순서);
+    QUOTA=parseQuota(j.data['정원']||j.data.정원);
     renderAll();
     setStatus(null);
   }catch(err){
@@ -453,7 +486,7 @@ function programState(pr, ref){
 }
 
 /* 탭 순서 → 패널 id 매핑 (패널 DOM 순서와 무관하게 표시) */
-const TAB_PANELS=['p0','p2','pLeave','pUpcoming','p1','p3'];
+const TAB_PANELS=['p0','pStaff','p2','pLeave','pUpcoming','p1','p3'];
 function tab(i){
   document.querySelectorAll('.tab').forEach((t,n)=>t.classList.toggle('on',n===i));
   TAB_PANELS.forEach((id,n)=>{ const el=document.getElementById(id); if(el) el.classList.toggle('on',n===i); });
@@ -480,6 +513,147 @@ function renderKPIs(){
   ];
   document.getElementById('kpis').innerHTML = k.map(x=>
     `<div class="kpi ${x.accent?'accent':''}"><div class="lab">${x.lab}</div><div class="num">${x.num}${x.sub?`<span class="numsub">${x.sub}</span>`:''}</div></div>`).join('');
+}
+
+/* ================= 인원현황표 (직급별 + 정현원) =================
+   - 항상 '조회일(오늘, KST)' 기준으로 집계 (기준일 선택값과 무관).
+   - 집계 대상 현원 = 조회일에 재직 중인 전체 인원(isActive: 재직+휴직+파견).
+   - 표기값이 실데이터와 다르면 아래 설정 상수만 고치면 됩니다.        */
+const RANK_GEN = ["임원","1급","2급","3급","4급","5급","6급"];   // 일반직 직급(순서=열 순서)
+const RANK_PRO = ["가급","나급","다급","라급"];                  // 전문직 직급
+const FLAG_SEP = "별도직군";    // 인원 시트 '비고'에 이 문구가 있으면 별도직군으로 분류
+const EMP_CONTRACT = "기간제";  // 인원 시트 '고용형태' 값이 이것이면 기간제
+
+const isContract = p => String(p.고용형태||"").trim()===EMP_CONTRACT;
+const isSeparate = p => String(p.비고||"").includes(FLAG_SEP);
+const rankOf     = p => String(p.직급||"").trim();
+
+/* KST(Asia/Seoul) 기준 오늘 */
+function kstYMD(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
+function kstDate(){ const [y,m,d]=kstYMD().split('-').map(Number); return new Date(y,m-1,d); }
+
+/* '팀 순서' 시트 → 부서 표시 순서 배열 */
+function parseTeamOrder(rows){
+  return (rows||[]).map(r=>String(r.팀 ?? r.부서 ?? r.팀명 ?? r.구분 ?? Object.values(r)[0] ?? "").trim()).filter(Boolean);
+}
+/* '정원' 시트 → {직급/구분 → 정원수} 매핑. 가로형(직급이 열)·세로형(구분/정원) 모두 지원 */
+function parseQuota(rows){
+  const q={}; const KNOWN=new Set([...RANK_GEN,...RANK_PRO,FLAG_SEP,EMP_CONTRACT]);
+  const num=v=>{ const n=parseInt(String(v).replace(/[^\d-]/g,''),10); return isNaN(n)?null:n; };
+  (rows||[]).forEach(r=>{
+    let matched=false;   // 가로형: 행의 열 이름이 직급명이면 그대로 흡수
+    Object.keys(r).forEach(k=>{ const kk=String(k).trim(); if(KNOWN.has(kk)){ const v=num(r[k]); if(v!==null){ q[kk]=v; matched=true; } } });
+    if(matched) return;
+    const label=String(r.구분 ?? r.직급 ?? r.항목 ?? r.명칭 ?? Object.values(r)[0] ?? "").trim();  // 세로형
+    const v=num(r.정원 ?? r.정원수 ?? r.인원 ?? r.수 ?? r.값 ?? Object.values(r)[1]);
+    if(label && KNOWN.has(label)) q[label]=v??0;
+  });
+  return q;
+}
+
+/* 조회일 기준 부서 목록(팀 순서 우선, 데이터에만 있는 부서는 뒤에 추가) */
+function staffTeams(active){
+  const seen=[...new Set(active.map(p=>String(p.부서||"").trim()).filter(Boolean))];
+  if(!TEAMORDER.length) return seen;
+  const list=TEAMORDER.filter(t=>seen.includes(t)||true).slice(); // 팀순서 그대로
+  seen.forEach(t=>{ if(!list.includes(t)) list.push(t); });
+  return list;
+}
+
+/* --- 표1: 직급별(부서×직급). 전문직 가~라급은 '전문직' 1열로 합산, 별도직군은 본인 직급칸 포함 --- */
+function teamRankRecord(team, active){
+  const rec={}; RANK_GEN.forEach(r=>rec[r]=0); rec.pro=0; rec.contract=0;
+  active.filter(p=>String(p.부서||"").trim()===team).forEach(p=>{
+    if(isContract(p)){ rec.contract++; return; }
+    const r=rankOf(p);
+    if(RANK_GEN.includes(r)) rec[r]++;
+    else if(RANK_PRO.includes(r)) rec.pro++;
+  });
+  rec.sub=RANK_GEN.reduce((s,r)=>s+rec[r],0)+rec.pro;
+  rec.total=rec.sub+rec.contract;
+  return rec;
+}
+function renderRankTable(active){
+  const teams=staffTeams(active);
+  const cols=[...RANK_GEN,"전문직","소계","기간제","총계"];
+  const keyOf=["임원","1급","2급","3급","4급","5급","6급","pro","sub","contract","total"];
+  const sumIdx=new Set([RANK_GEN.length+1, cols.length-1]); // 소계·총계 강조
+  const head=`<thead><tr><th>구분</th>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead>`;
+  const sum={}; keyOf.forEach(k=>sum[k]=0);
+  const rowHtml=(label,rec,cls="")=>`<tr class="${cls}"><td>${label}</td>`+
+    keyOf.map((k,i)=>`<td class="${sumIdx.has(i)?'sumcol':''}">${rec[k]}</td>`).join("")+`</tr>`;
+  let body="";
+  teams.forEach(t=>{ const r=teamRankRecord(t,active); keyOf.forEach(k=>sum[k]+=r[k]); body+=rowHtml(t,r); });
+  body+=rowHtml("합계",sum,"sumrow");
+  document.getElementById('staffRankTbl').innerHTML=head+`<tbody>${body}</tbody>`;
+}
+
+/* --- 표2: 정현원(정원/현원/결원). 별도직군은 직급칸에서 제외하고 별도 집계 --- */
+function finalizeRec(rec){
+  rec.genSub=RANK_GEN.reduce((s,r)=>s+(rec[r]||0),0);
+  rec.proSub=RANK_PRO.reduce((s,r)=>s+(rec[r]||0),0);
+  rec.total =rec.genSub+rec.proSub+(rec.sep||0);  // 정원현황(일반+전문+별도)
+  rec.grand =rec.total+(rec.contract||0);          // 합계(+기간제)
+  return rec;
+}
+function quotaRecord(){
+  const rec={}; [...RANK_GEN,...RANK_PRO].forEach(r=>rec[r]=QUOTA[r]||0);
+  rec.sep=QUOTA[FLAG_SEP]||0; rec.contract=QUOTA[EMP_CONTRACT]||0;
+  return finalizeRec(rec);
+}
+function staffRecord(active){
+  const rec={}; [...RANK_GEN,...RANK_PRO].forEach(r=>rec[r]=0); rec.sep=0; rec.contract=0;
+  active.forEach(p=>{
+    if(isContract(p)){ rec.contract++; return; }
+    if(isSeparate(p)){ rec.sep++; return; }
+    const r=rankOf(p); if(rec[r]!==undefined) rec[r]++;   // 알 수 없는 직급은 어느 칸에도 안 들어감(데이터 점검용)
+  });
+  return finalizeRec(rec);
+}
+function renderQuotaTable(active){
+  const q=quotaRecord(), c=staffRecord(active);
+  const cols=[...RANK_GEN,"genSub",...RANK_PRO,"proSub","sep","total","contract","grand"];
+  const d={}; cols.forEach(k=>d[k]=(c[k]||0)-(q[k]||0));
+  const emph=new Set(["genSub","proSub","total","grand"]);
+  const head=`<thead>
+      <tr>
+        <th rowspan="2">구분</th>
+        <th colspan="${RANK_GEN.length+1}">일반직</th>
+        <th colspan="${RANK_PRO.length+1}">전문직</th>
+        <th rowspan="2">별도직군</th><th rowspan="2">정원현황</th><th rowspan="2">기간제</th><th rowspan="2">합계</th>
+      </tr>
+      <tr>${RANK_GEN.map(r=>`<th>${r}</th>`).join("")}<th>소계</th>${RANK_PRO.map(r=>`<th>${r}</th>`).join("")}<th>소계</th></tr>
+    </thead>`;
+  const row=(name,rec,cls="")=>`<tr class="${cls}"><td>${name}</td>`+
+    cols.map(k=>`<td class="${emph.has(k)?'sumcol':''} ${(name==='결원'&&(rec[k]||0)<0)?'neg':''}">${rec[k]||0}</td>`).join("")+`</tr>`;
+  const body=row("정원",q)+row("현원",c)+row("결원",d,"sumrow");
+  document.getElementById('staffQuotaTbl').innerHTML=head+`<tbody>${body}</tbody>`;
+}
+function renderStaffStats(){
+  const active=PEOPLE.filter(p=>isActive(p,kstDate()));
+  const asOf=document.getElementById('staffAsOf'); if(asOf) asOf.textContent=`· 조회일 ${kstYMD()} (KST) · 현원 ${active.length}명`;
+  const note=document.getElementById('staffNote');
+  if(note){
+    const miss=[]; if(!TEAMORDER.length) miss.push("'팀 순서'(부서 자동정렬)"); if(!Object.keys(QUOTA).length) miss.push("'정원'(정원 0 표시)");
+    if(miss.length){ note.style.display='block'; note.textContent=`※ ${miss.join(', ')} 시트가 아직 연동되지 않았습니다. Apps Script에 시트를 추가하면 자동 반영됩니다.`; }
+    else note.style.display='none';
+  }
+  renderRankTable(active);
+  renderQuotaTable(active);
+}
+function exportStaffStats(){
+  const active=PEOPLE.filter(p=>isActive(p,kstDate()));
+  const lines=[];
+  const cell=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const tblRows=tblId=>[...document.getElementById(tblId).querySelectorAll('tr')]
+    .map(tr=>[...tr.children].map(td=>{
+      const cs=+(td.getAttribute('colspan')||1); return Array(cs).fill(td.textContent.trim());
+    }).flat());
+  lines.push([`인원현황표 (조회일 ${kstYMD()} KST, 현원 ${active.length}명)`]);
+  lines.push(["○ 직급별 인원 현황"]); tblRows('staffRankTbl').forEach(r=>lines.push(r));
+  lines.push([]); lines.push(["○ 정현원 현황"]); tblRows('staffQuotaTbl').forEach(r=>lines.push(r));
+  const csv='﻿'+lines.map(r=>r.map(cell).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`인원현황표_${kstYMD()}.csv`; a.click();
 }
 
 /* ---- 타임라인 ---- */
@@ -796,7 +970,7 @@ function exportProgram(which){
 }
 
 /* ---- init ---- */
-function renderAll(){ renderKPIs(); renderLeave(); renderUpcoming(); renderTimeline(); renderProgram(); renderDDay(); renderCal(); renderRoster(); }
+function renderAll(){ renderKPIs(); renderStaffStats(); renderLeave(); renderUpcoming(); renderTimeline(); renderProgram(); renderDDay(); renderCal(); renderRoster(); }
 document.getElementById('refDate').value=ymd(today());
 calCursor=new Date(today().getFullYear(),today().getMonth(),1);
 loadData();

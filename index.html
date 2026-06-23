@@ -424,6 +424,7 @@ const today = () => { const n=new Date(); return new Date(n.getFullYear(), n.get
 let REF = today();
 const fmt = d => d.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\. /g,'.').replace(/\.$/,'');
 const days = (a,b) => Math.round((b-a)/86400000);
+const ddText = n => n===0 ? 'D-day' : 'D-'+n;   // 당일은 D-day 로 표기
 const nameOf = sb => (PEOPLE.find(p=>p.사번===sb)||{}).사원명||"";
 const deptOf = sb => (PEOPLE.find(p=>p.사번===sb)||{}).부서||"";
 
@@ -510,7 +511,7 @@ function pickSub(s){ activeSub=s; renderProgram(); }
 function ddayBadge(dday,kind){
   if(kind==='cur') return `<span class="dday now">사용중</span>`;
   const cls = dday<=7?'urgent':dday<=30?'soon':'now';
-  return `<span class="dday ${cls}">D-${dday}</span>`;
+  return `<span class="dday ${cls}">${ddText(dday)}</span>`;
 }
 function curCountOf(cat){ return new Set(PROGRAMS.filter(p=>categoryOf(p.제도)===cat && programState(p,REF)==="현재").map(p=>p.사번)).size; }
 function renderProgram(){
@@ -593,7 +594,7 @@ function renderDDay(){
     const cls=e.dday<=7?'urgent':e.dday<=30?'soon':'now';
     return `<div class="dcard"><span class="et" style="background:${e.color}">${e.type}</span>
       <div class="info"><div class="n">${e.name} <span style="font-weight:400;color:var(--ink2);font-size:11px">${e.dept}</span></div><div class="dt">${e.date}</div></div>
-      <span class="dday ${cls}">D-${e.dday}</span></div>`;
+      <span class="dday ${cls}">${ddText(e.dday)}</span></div>`;
   }).join(''):'<div class="empty">예정 일정이 없습니다.</div>';
   const pager = all.length>DDAY_PER
     ? `<div class="dpager"><button class="btn" ${ddayPage===0?'disabled':''} onclick="ddayMove(-1)">‹ 이전</button><span>${ddayPage+1} / ${pages} (총 ${all.length}건)</span><button class="btn" ${ddayPage>=pages-1?'disabled':''} onclick="ddayMove(1)">다음 ›</button></div>`
@@ -627,7 +628,7 @@ function renderLeave(){
     const e=D(r.end);
     let rem;
     if(!e){ rem='<span class="dday now">미정</span>'; }
-    else { const n=days(REF,e)+1; const cls=n<=7?'urgent':n<=30?'soon':'now'; rem=`<span class="dday ${cls}">복직 D-${n}</span>`; }
+    else { const n=days(REF,e)+1; const cls=n<=7?'urgent':n<=30?'soon':'now'; rem=`<span class="dday ${cls}">복직 ${ddText(n)}</span>`; }
     return `<tr><td style="font-weight:700">${r.name}</td><td>${r.dept}</td>
       <td><span class="tag" style="background:${colorOf(r.type)}">${r.type}</span></td>
       <td>${r.start}</td><td>${r.end||'미정'}</td><td>${rem}</td></tr>`;
@@ -647,7 +648,7 @@ function renderUpcoming(){
     const cls=e.dday<=7?'urgent':e.dday<=30?'soon':'now';
     return `<tr><td style="font-weight:700">${e.name}</td><td>${e.dept}</td>
       <td><span class="tag" style="background:${e.color}">${e.cat}</span></td>
-      <td>${e.kind}</td><td>${e.date}</td><td><span class="dday ${cls}">D-${e.dday}</span></td></tr>`;
+      <td>${e.kind}</td><td>${e.date}</td><td><span class="dday ${cls}">${ddText(e.dday)}</span></td></tr>`;
   }).join('');
   document.getElementById('upcomingWrap').innerHTML=`<table class="rtable"><thead><tr><th>사원명</th><th>부서</th><th>유형</th><th>종류</th><th>예정일</th><th>남은기간</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--ink2);padding:28px">예정 일정이 없습니다.</td></tr>'}</tbody></table>`;
   document.getElementById('upCntTab').textContent=`${list.length}건`;

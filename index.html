@@ -547,19 +547,35 @@ function allEvents(){
   const ev=[];
   const push=o=>{ if(D(o.date)) ev.push(o); };  // 날짜가 유효한 이벤트만 수집
   PEOPLE.forEach(p=>{
-    if(D(p.입사일)) push({date:p.입사일,type:(D(p.입사일)>REF?"입사예정":"입사"),cat:"입사",kind:"입사",name:p.사원명,dept:p.부서,color:"#4a8c5c"});
-    if(p.퇴사일) push({date:p.퇴사일,type:"퇴사",cat:"퇴사",kind:"퇴사",name:p.사원명,dept:p.부서,color:"#A32D2D"});
+    if(D(p.입사일)) push({date:p.입사일,type:(D(p.입사일)>REF?"입사예정":"입사"),cat:"입사",kind:"입사",사번:p.사번,name:p.사원명,dept:p.부서,color:"#4a8c5c"});
+    if(p.퇴사일) push({date:p.퇴사일,type:"퇴사",cat:"퇴사",kind:"퇴사",사번:p.사번,name:p.사원명,dept:p.부서,color:"#A32D2D"});
   });
   PROGRAMS.forEach(pr=>{
     const cat=categoryOf(pr.제도);
     const lbl = cat==="휴직"?"휴직 시작":cat==="휴가"?((pr.제도||"").includes("산전후")?"산전후 시작":"휴가 시작"):"단축 시작";
-    push({date:pr.시작일,type:lbl,cat:pr.제도,kind:"시작",name:nameOf(pr.사번),dept:deptOf(pr.사번),color:colorOf(pr.제도)});
-    if(pr.종료일 && cat==="휴직") push({date:pr.종료일,type:"복직(휴직종료)",cat:pr.제도,kind:"복직",name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
+    push({date:pr.시작일,type:lbl,cat:pr.제도,kind:"시작",사번:pr.사번,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:colorOf(pr.제도)});
+    if(pr.종료일 && cat==="휴직") push({date:pr.종료일,type:"복직(휴직종료)",cat:pr.제도,kind:"복직",사번:pr.사번,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
   });
   return ev;
 }
+/* 같은 날짜일 때 유형 우선순위: 퇴사 → 휴직시작 → 휴가시작 → 복직 → 단축 → 입사 */
+function evPriority(e){
+  if(e.kind==="퇴사") return 0;
+  if(e.kind==="복직") return 3;
+  if(e.kind==="입사") return 5;
+  if(e.kind==="시작"){
+    const c=categoryOf(e.cat);
+    if(c==="휴직") return 1;
+    if(c==="휴가") return 2;
+    if(c==="단축") return 4;
+  }
+  return 9;
+}
 function upcomingEvents(){
-  return allEvents().map(e=>({...e,dday:days(REF,D(e.date))})).filter(e=>e.dday>=0).sort((a,b)=>a.dday-b.dday);
+  return allEvents().map(e=>({...e,dday:days(REF,D(e.date))})).filter(e=>e.dday>=0)
+    .sort((a,b)=> a.dday-b.dday
+      || evPriority(a)-evPriority(b)
+      || String(a.사번||'').localeCompare(String(b.사번||''),undefined,{numeric:true}));
 }
 let ddayPage=0;
 const DDAY_PER=7;

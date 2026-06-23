@@ -231,7 +231,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 
   <!-- TAB 1: 제도별 조회 -->
   <section class="panel" id="p1">
-    <div class="chips" id="chips"></div>
+    <div class="kpis" id="chips" style="margin-bottom:16px"></div>
     <div class="subchips" id="subchips"></div>
     <div class="two">
       <div class="col">
@@ -404,7 +404,7 @@ function isActive(p, ref){
 }
 function programState(pr, ref){
   const s=D(pr.시작일), e=D(pr.종료일)||new Date(8640000000000000);
-  if(!s) return "종료";              // 시작일이 비었거나 해석 불가하면 집계 제외
+  if(!s) return "예정";              // 시작일 미정 → '사용 예정'으로 간주
   if(ref<s) return "예정";
   if(ref>e) return "종료";
   return "현재";
@@ -483,11 +483,12 @@ function ddayBadge(dday,kind){
   const cls = dday<=7?'urgent':dday<=30?'soon':'now';
   return `<span class="dday ${cls}">D-${dday}</span>`;
 }
+function curCountOf(cat){ return new Set(PROGRAMS.filter(p=>categoryOf(p.제도)===cat && programState(p,REF)==="현재").map(p=>p.사번)).size; }
 function renderProgram(){
   const cats=presentCats();
   if(!activeCat || !cats.includes(activeCat)) activeCat=cats[0]||null;
   document.getElementById('chips').innerHTML = cats.map(c=>
-    `<button class="chip ${c===activeCat?'on':''}" onclick="pickCat('${c}')"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${CAT_COLOR[c]};margin-right:7px"></span>${c}</button>`).join('');
+    `<button class="kpi leavebox ${c===activeCat?'on':''}" onclick="pickCat('${c}')"><div class="lab"><span class="dot" style="background:${CAT_COLOR[c]}"></span>${c}</div><div class="num">${curCountOf(c)}</div><div class="sub">현재 사용 중</div></button>`).join('');
   const subs=activeCat?subProgramsOf(activeCat):[];
   if(activeSub!=='전체' && !subs.includes(activeSub)) activeSub='전체';
   document.getElementById('subchips').innerHTML = activeCat?
@@ -497,12 +498,14 @@ function renderProgram(){
   const matches = PROGRAMS.filter(pr=>categoryOf(pr.제도)===activeCat && (activeSub==='전체'||pr.제도===activeSub));
   const cur=[],up=[];
   matches.forEach(pr=>{ const st=programState(pr,REF); if(st==="현재")cur.push(pr); else if(st==="예정")up.push(pr); });
-  up.sort((a,b)=>D(a.시작일)-D(b.시작일));
+  up.sort((a,b)=>{ const da=D(a.시작일), db=D(b.시작일); if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1; return da-db; });
   const card=(pr,kind)=>{
-    const dday=days(REF,D(pr.시작일));
+    const s=D(pr.시작일);
+    const badge = kind==='cur' ? `<span class="dday now">사용중</span>`
+      : (s ? ddayBadge(days(REF,s),'up') : `<span class="dday soon">예정</span>`);
     return `<div class="prow"><div class="top"><span class="nm">${nameOf(pr.사번)}</span><span class="dept">${deptOf(pr.사번)}</span>
-      <span class="pg" style="background:${colorOf(pr.제도)}">${pr.제도}</span>${ddayBadge(dday,kind)}</div>
-      <div class="range">${pr.시작일} ~ ${pr.종료일||'미정'}</div>${pr.상세?`<div class="detail">⏱ ${pr.상세}</div>`:''}</div>`;
+      <span class="pg" style="background:${colorOf(pr.제도)}">${pr.제도}</span>${badge}</div>
+      <div class="range">${pr.시작일||'미정'} ~ ${pr.종료일||'미정'}</div>${pr.상세?`<div class="detail">⏱ ${pr.상세}</div>`:''}</div>`;
   };
   document.getElementById('curList').innerHTML = cur.length?cur.map(p=>card(p,'cur')).join(''):'<div class="empty">현재 사용 중인 인원이 없습니다.</div>';
   document.getElementById('upList').innerHTML = up.length?up.map(p=>card(p,'up')).join(''):'<div class="empty">예정 인원이 없습니다.</div>';

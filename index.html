@@ -56,6 +56,12 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .kpi .num{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1}
 .kpi .sub{font-size:11px;color:var(--ink2);margin-top:6px}
 .kpi.accent .num{color:var(--main)}
+.kpi.leavebox{cursor:pointer;text-align:left;font-family:inherit;width:100%;transition:.15s}
+.kpi.leavebox:hover{border-color:var(--main-line);background:var(--main-soft)}
+.kpi.leavebox.on{border-color:var(--main);background:var(--main-soft)}
+.kpi.leavebox .lab{display:flex;align-items:center;gap:6px}
+.kpi.leavebox .num{font-size:26px}
+.kpi.leavebox .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 
 .tl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .tl-title{font-size:16px;font-weight:900}
@@ -179,9 +185,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 <div class="wrap">
   <div class="tabs">
     <button class="tab on" onclick="tab(0)">기준일 현황</button>
-    <button class="tab" onclick="tab(1)">제도별 조회</button>
-    <button class="tab" onclick="tab(2)">전체 명단</button>
-    <button class="tab" onclick="tab(3)">타임라인</button>
+    <button class="tab" onclick="tab(1)">휴직자</button>
+    <button class="tab" onclick="tab(2)">예정자</button>
+    <button class="tab" onclick="tab(3)">제도별 조회</button>
+    <button class="tab" onclick="tab(4)">전체 명단</button>
+    <button class="tab" onclick="tab(5)">타임라인</button>
   </div>
 
   <!-- TAB 0: 기준일 현황 (KPI + 캘린더) -->
@@ -204,6 +212,21 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
         <div id="ddayList"></div>
       </div>
     </div>
+  </section>
+
+  <!-- TAB: 휴직자 -->
+  <section class="panel" id="pLeave">
+    <div class="kpis" id="leaveKpis"></div>
+    <div id="leaveWrap"></div>
+  </section>
+
+  <!-- TAB: 예정자 -->
+  <section class="panel" id="pUpcoming">
+    <div class="rtop" style="margin-bottom:14px">
+      <div class="subchips" id="upFilters" style="margin:0"></div>
+      <span class="cnt" id="upCntTab" style="font-size:13px;color:var(--ink2)"></span>
+    </div>
+    <div id="upcomingWrap"></div>
   </section>
 
   <!-- TAB 1: 제도별 조회 -->
@@ -488,14 +511,14 @@ function allEvents(){
   const ev=[];
   const push=o=>{ if(D(o.date)) ev.push(o); };  // 날짜가 유효한 이벤트만 수집
   PEOPLE.forEach(p=>{
-    if(D(p.입사일)) push({date:p.입사일,type:(D(p.입사일)>REF?"입사예정":"입사"),name:p.사원명,dept:p.부서,color:"#4a8c5c"});
-    if(p.퇴사일) push({date:p.퇴사일,type:"퇴사",name:p.사원명,dept:p.부서,color:"#A32D2D"});
+    if(D(p.입사일)) push({date:p.입사일,type:(D(p.입사일)>REF?"입사예정":"입사"),cat:"입사",kind:"입사",name:p.사원명,dept:p.부서,color:"#4a8c5c"});
+    if(p.퇴사일) push({date:p.퇴사일,type:"퇴사",cat:"퇴사",kind:"퇴사",name:p.사원명,dept:p.부서,color:"#A32D2D"});
   });
   PROGRAMS.forEach(pr=>{
     const cat=categoryOf(pr.제도);
     const lbl = cat==="휴직"?"휴직 시작":cat==="휴가"?((pr.제도||"").includes("산전후")?"산전후 시작":"휴가 시작"):"단축 시작";
-    push({date:pr.시작일,type:lbl,name:nameOf(pr.사번),dept:deptOf(pr.사번),color:colorOf(pr.제도)});
-    if(pr.종료일 && cat==="휴직") push({date:pr.종료일,type:"복직(휴직종료)",name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
+    push({date:pr.시작일,type:lbl,cat:pr.제도,kind:"시작",name:nameOf(pr.사번),dept:deptOf(pr.사번),color:colorOf(pr.제도)});
+    if(pr.종료일 && cat==="휴직") push({date:pr.종료일,type:"복직(휴직종료)",cat:pr.제도,kind:"복직",name:nameOf(pr.사번),dept:deptOf(pr.사번),color:"#3B6D11"});
   });
   return ev;
 }
@@ -521,6 +544,58 @@ function renderDDay(){
     ? `<div class="dpager"><button class="btn" ${ddayPage===0?'disabled':''} onclick="ddayMove(-1)">‹ 이전</button><span>${ddayPage+1} / ${pages} (총 ${all.length}건)</span><button class="btn" ${ddayPage>=pages-1?'disabled':''} onclick="ddayMove(1)">다음 ›</button></div>`
     : '';
   document.getElementById('ddayList').innerHTML = cards+pager;
+}
+
+/* ---- 휴직자 탭 ---- */
+let leaveFilter=null;   // null = 전체, 그 외 = 제도명(유형)
+function leaveRows(){
+  return PROGRAMS
+    .filter(pr=>["휴가","휴직"].includes(categoryOf(pr.제도)) && programState(pr,REF)==="현재")
+    .filter(pr=>{ const p=PEOPLE.find(x=>x.사번===pr.사번); return p && isActive(p,REF); })
+    .map(pr=>({pr,name:nameOf(pr.사번),dept:deptOf(pr.사번),type:pr.제도,start:pr.시작일,end:pr.종료일}))
+    .sort((a,b)=>{ const ea=D(a.end), eb=D(b.end); if(!ea&&!eb) return 0; if(!ea) return 1; if(!eb) return -1; return ea-eb; });
+}
+function pickLeave(t){ leaveFilter = (leaveFilter===t)?null:t; renderLeave(); }
+function renderLeave(){
+  const all=leaveRows();
+  const counts={}; all.forEach(r=>counts[r.type]=(counts[r.type]||0)+1);
+  const types=Object.keys(counts);
+  if(leaveFilter && !types.includes(leaveFilter)) leaveFilter=null;
+  const boxes=[{key:null,lab:"전체 휴직자",num:all.length}].concat(types.map(t=>({key:t,lab:t,num:counts[t]})));
+  document.getElementById('leaveKpis').innerHTML = boxes.map(b=>{
+    const on=(b.key===leaveFilter);
+    const arg=b.key===null?'null':`'${String(b.key).replace(/'/g,"\\'")}'`;
+    const dot=b.key?`<span class="dot" style="background:${colorOf(b.key)}"></span>`:'';
+    return `<button class="kpi leavebox ${on?'on':''}" onclick="pickLeave(${arg})"><div class="lab">${dot}${b.lab}</div><div class="num">${b.num}</div></button>`;
+  }).join('');
+  const rows=all.filter(r=>!leaveFilter||r.type===leaveFilter).map(r=>{
+    const e=D(r.end);
+    let rem;
+    if(!e){ rem='<span class="dday now">미정</span>'; }
+    else { const n=days(REF,e)+1; const cls=n<=7?'urgent':n<=30?'soon':'now'; rem=`<span class="dday ${cls}">복직 D-${n}</span>`; }
+    return `<tr><td style="font-weight:700">${r.name}</td><td>${r.dept}</td>
+      <td><span class="tag" style="background:${colorOf(r.type)}">${r.type}</span></td>
+      <td>${r.start}</td><td>${r.end||'미정'}</td><td>${rem}</td></tr>`;
+  }).join('');
+  document.getElementById('leaveWrap').innerHTML=`<table class="rtable"><thead><tr><th>사원명</th><th>부서</th><th>유형</th><th>시작일</th><th>종료일</th><th>남은기간(복직)</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--ink2);padding:28px">해당 휴직자가 없습니다.</td></tr>'}</tbody></table>`;
+}
+
+/* ---- 예정자 탭 ---- */
+let upcomingFilter=0;   // 0 = 전체, 그 외 = N일 이내
+function pickUpcoming(d){ upcomingFilter=d; renderUpcoming(); }
+function renderUpcoming(){
+  const opts=[{lab:"전체",v:0},{lab:"30일 이내",v:30},{lab:"60일 이내",v:60},{lab:"90일 이내",v:90}];
+  document.getElementById('upFilters').innerHTML=opts.map(o=>`<button class="subchip ${upcomingFilter===o.v?'on':''}" onclick="pickUpcoming(${o.v})">${o.lab}</button>`).join('');
+  let list=upcomingEvents();
+  if(upcomingFilter) list=list.filter(e=>e.dday<=upcomingFilter);
+  const rows=list.map(e=>{
+    const cls=e.dday<=7?'urgent':e.dday<=30?'soon':'now';
+    return `<tr><td style="font-weight:700">${e.name}</td><td>${e.dept}</td>
+      <td><span class="tag" style="background:${e.color}">${e.cat}</span></td>
+      <td>${e.kind}</td><td>${e.date}</td><td><span class="dday ${cls}">D-${e.dday}</span></td></tr>`;
+  }).join('');
+  document.getElementById('upcomingWrap').innerHTML=`<table class="rtable"><thead><tr><th>사원명</th><th>부서</th><th>유형</th><th>종류</th><th>예정일</th><th>남은기간</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--ink2);padding:28px">예정 일정이 없습니다.</td></tr>'}</tbody></table>`;
+  document.getElementById('upCntTab').textContent=`${list.length}건`;
 }
 
 /* ---- 캘린더 ---- */
@@ -562,9 +637,9 @@ function statusOf(p, ref){
 }
 let rosterSort={key:null,dir:1};
 const gv = id => (document.getElementById(id)||{}).value||'';
-/* 한 사람의 모든 정보(인적사항·상태·보유 제도 전체)를 합친 검색 문자열 */
+/* 한 사람의 정보(인적사항·상태) + '기준일에 현재 사용 중'인 제도만 합친 검색 문자열 */
 function personHaystack(p){
-  const prog=PROGRAMS.filter(pr=>pr.사번===p.사번)
+  const prog=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,REF)==="현재")
     .map(pr=>[pr.제도,pr.시작일,pr.종료일,pr.상세,pr.비고].join(' ')).join(' ');
   return [p.사번,p.사원명,p.부서,p.직급,p.고용형태,p.입사일,p.퇴사일,statusOf(p,REF),prog]
     .join(' ').toLowerCase();
@@ -640,7 +715,7 @@ function exportProgram(which){
 }
 
 /* ---- init ---- */
-function renderAll(){ renderKPIs(); renderTimeline(); renderProgram(); renderDDay(); renderCal(); renderRoster(); }
+function renderAll(){ renderKPIs(); renderLeave(); renderUpcoming(); renderTimeline(); renderProgram(); renderDDay(); renderCal(); renderRoster(); }
 document.getElementById('refDate').value=today().toISOString().slice(0,10);
 calCursor=new Date(today().getFullYear(),today().getMonth(),1);
 loadData();

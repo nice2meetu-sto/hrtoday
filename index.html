@@ -206,6 +206,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .staff-table .sumcol{font-weight:800;background:#f3f1fb}
 .staff-table .sumrow td{font-weight:900;background:#f1eefb}
 .staff-table .neg{color:var(--warn)}
+/* 직급별 표 팀 행 음영(표시순서 구간별) */
+.staff-table .shade-y td,.staff-table .shade-y td:first-child{background:#fcf6db}
+.staff-table .shade-o td,.staff-table .shade-o td:first-child{background:#fbe9d6}
+.staff-table .shade-g td,.staff-table .shade-g td:first-child{background:#e8f4e4}
 
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.cal-grid{grid-template-columns:1fr}.tl-scale{margin-left:130px}.tl-name{width:130px}}
 </style>
@@ -392,7 +396,7 @@ const SAMPLE_PROGRAMS = [
 ];
 
 let PEOPLE = [], PROGRAMS = [];
-let TEAMORDER = [], QUOTA = {};   // 인원현황표용: '팀 순서' / '정원' 시트
+let TEAMORDER = [], QUOTA = {}, TEAMORD = {};   // 인원현황표용: '팀 순서' / '정원' 시트 (TEAMORD: 부서→표시순서)
 /* ▲▲▲ 설정/데이터 영역 끝 ▲▲▲ */
 
 /* ---- 상태 메시지 ---- */
@@ -541,7 +545,15 @@ function parseTeamOrder(rows){
     return {name, ord:isNaN(o)?i+1:o, i};
   }).filter(x=>x.name);
   list.sort((a,b)=> a.ord-b.ord || a.i-b.i);
+  TEAMORD={}; list.forEach((x,idx)=>{ TEAMORD[x.name]=x.ord||idx+1; });
   return list.map(x=>x.name);
+}
+/* 표시순서 구간별 음영 클래스 (1~3 흰색 / 4~9 노랑 / 10~15 주황 / 16~ 초록) */
+function teamShade(ord){
+  if(ord>=4 && ord<=9) return "shade-y";
+  if(ord>=10 && ord<=15) return "shade-o";
+  if(ord>=16) return "shade-g";
+  return "";
 }
 /* '정원' 시트 → {직급/구분 → 정원수} 매핑. 가로형(직급이 열)·세로형(구분/정원) 모두 지원 */
 function parseQuota(rows){
@@ -590,7 +602,7 @@ function renderRankTable(active){
   const rowHtml=(label,rec,cls="")=>`<tr class="${cls}"><td>${label}</td>`+
     keyOf.map((k,i)=>`<td class="${sumIdx.has(i)?'sumcol':''}">${rec[k]}</td>`).join("")+`</tr>`;
   let body="";
-  teams.forEach(t=>{ const r=teamRankRecord(t,active); keyOf.forEach(k=>sum[k]+=r[k]); body+=rowHtml(t,r); });
+  teams.forEach((t,idx)=>{ const r=teamRankRecord(t,active); keyOf.forEach(k=>sum[k]+=r[k]); body+=rowHtml(t,r,teamShade(TEAMORD[t]||idx+1)); });
   body+=rowHtml("합계",sum,"sumrow");
   document.getElementById('staffRankTbl').innerHTML=head+`<tbody>${body}</tbody>`;
 }

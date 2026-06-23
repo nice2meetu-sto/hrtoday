@@ -206,9 +206,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .staff-table .sumcol{font-weight:800}
 .staff-table .sumrow td{font-weight:900;background:#eef0f3}
 .staff-table .neg{color:var(--warn)}
-/* 정현원 표: 소계/총계 열 강조(옅은 회색). 직급별 표는 행 음영과 한 줄로 이어지도록 sumcol 배경 없음 */
-#staffQuotaTbl .sumcol{background:#eef0f3}
-/* 직급별 표 팀 행 음영(표시순서 구간별) — 소계/총계 포함 한 줄 동일 색 */
+/* 소계/총계 열은 행 음영과 무관하게 항상 옅은 회색 (id 선택자로 음영보다 우선) */
+#staffRankTbl .sumcol,#staffQuotaTbl .sumcol{background:#eef0f3}
+/* 직급별 표 팀 행 음영(표시순서 구간별) */
 .staff-table .shade-y td,.staff-table .shade-y td:first-child{background:#fcf6db}
 .staff-table .shade-o td,.staff-table .shade-o td:first-child{background:#fbe9d6}
 .staff-table .shade-g td,.staff-table .shade-g td:first-child{background:#e8f4e4}

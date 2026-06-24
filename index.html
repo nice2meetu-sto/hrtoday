@@ -226,7 +226,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
     <div class="head-ctrl">
       <div class="datebox">
         <label for="refDate">기준일</label>
-        <input type="date" id="refDate">
+        <input type="date" id="refDate" min="1900-01-01" max="2100-12-31">
       </div>
       <button class="btn" onclick="setToday()">오늘</button>
       <button class="btn primary" id="refreshBtn" onclick="loadData()">↻ 새로고침</button>
@@ -499,7 +499,7 @@ function tab(i){
 }
 
 function setToday(){ document.getElementById('refDate').value=ymd(today()); onDate(); }
-function onDate(){ REF = D(document.getElementById('refDate').value) || today(); ddayPage=0; renderAll(); }
+function onDate(){ REF = D(document.getElementById('refDate').value) || today(); ddayPage=0; calCursor=new Date(REF.getFullYear(),REF.getMonth(),1); renderAll(); }
 document.getElementById('refDate').addEventListener('change', onDate);
 
 /* ---- KPI ---- */

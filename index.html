@@ -222,6 +222,8 @@ table.gradegrid td.dept,table.gradegrid th.dept{text-align:left;font-weight:500;
 table.gradegrid td.dept.clickable{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(0,0,0,.25)}
 table.gradegrid td.dept.clickable:hover{color:#000;text-decoration-color:var(--main)}
 table.gradegrid tr.total td{font-weight:700;border-top:2px solid #9aa1b2}
+table.gradegrid tr.bb-top td{border-top:2px solid #b3b8c5}      /* ~~본부 행 윗줄 */
+table.gradegrid tr.bb-bot td{border-bottom:2px solid #b3b8c5}   /* 대표이사 행 아랫줄 */
 table.gradegrid td.zero{color:#c2c5d0}
 table.gradegrid td.num{font-variant-numeric:tabular-nums}
 table.gradegrid td.cur{font-weight:700;color:var(--main)}
@@ -677,7 +679,8 @@ function renderRankTable(active){
   head+=`<th class="sep-left">남</th><th>여</th><th class="e-gig esub">계</th><th class="sep-left">남</th><th>여</th><th class="e-pink esub">계</th><th class="sep-left">남</th><th>여</th><th class="e-gry2 esub">계</th></tr></thead>`;
   const trio=(cell,cls)=>ggCell(cell.남,"sep-left")+ggCell(cell.여)+ggCell(cell.남+cell.여,"cur "+cls+" esub");
   const renderRow=(r,isTotal)=>{
-    let html=`<tr class="${isTotal?"total":""}">`;
+    const bcls=isTotal?"":(/대표이사/.test(r.dept)?" bb-bot":(/본부$/.test(r.dept)?" bb-top":""));
+    let html=`<tr class="${isTotal?"total":""}${bcls}">`;
     html+=`<td class="dept${isTotal?"":" clickable"}"${isTotal?"":` data-dept="${ggEsc(r.dept)}"`}>${ggEsc(r.dept)}</td>`;
     GG_GRADES.forEach(g=>html+=trio(r.row.grade[g],gcls(g)));
     html+=trio(r.subtotal,"e-gig")+trio(r.gigan,"e-pink")+trio(r.total,"e-gry2");

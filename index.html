@@ -214,15 +214,6 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .staff-table .shade-g td,.staff-table .shade-g td:first-child{background:#e8f4e4}
 
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.cal-grid{grid-template-columns:1fr}.tl-scale{margin-left:130px}.tl-name{width:130px}}
-/* 상단 고정 요약 바 (총원/현원/휴직/파견) */
-.topsum{max-width:1320px;margin:0 auto;padding:0 24px 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.topsum .tcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgba(40,42,55,.04)}
-.topsum .tlab{font-size:12px;color:var(--ink2);font-weight:700}
-.topsum .tsub{font-size:10px;color:var(--ink2);font-weight:500}
-.topsum .tnum{font-size:21px;font-weight:900;letter-spacing:-.02em;margin-left:auto;font-variant-numeric:tabular-nums}
-.topsum .tcard.accent{border-color:var(--main-line);background:var(--main-soft)}
-.topsum .tcard.accent .tnum{color:var(--main)}
-@media(max-width:640px){.topsum{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -242,7 +233,6 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
     </div>
   </div>
   <div class="statusbar"><div class="msg" id="statusMsg" role="status" aria-live="polite"></div></div>
-  <div class="topsum" id="topSummary"></div>
 </header>
 
 <div class="wrap">
@@ -511,23 +501,6 @@ function tab(i){
 function setToday(){ document.getElementById('refDate').value=ymd(today()); onDate(); }
 function onDate(){ REF = D(document.getElementById('refDate').value) || today(); ddayPage=0; calCursor=new Date(REF.getFullYear(),REF.getMonth(),1); renderAll(); }
 document.getElementById('refDate').addEventListener('change', onDate);
-
-/* ---- 상단 고정 요약 바 (총원/현원/휴직/파견, 기준일 기준) ---- */
-function renderTopSummary(){
-  const el=document.getElementById('topSummary'); if(!el) return;
-  const active = PEOPLE.filter(p=>isActive(p,REF));
-  const onLeave = active.filter(p=>statusOf(p,REF)==="휴직").length;
-  const onDispatch = active.filter(p=>statusOf(p,REF)==="재직"
-    && PROGRAMS.some(pr=>pr.사번===p.사번 && (pr.제도||"").includes("파견") && programState(pr,REF)==="현재")).length;
-  const working = active.filter(p=>statusOf(p,REF)==="재직").length;
-  const k=[
-    {lab:"총원",num:active.length,accent:true},
-    {lab:"현원",num:working-onDispatch},
-    {lab:"휴직",num:onLeave},
-    {lab:"파견",num:onDispatch},
-  ];
-  el.innerHTML=k.map(x=>`<div class="tcard ${x.accent?'accent':''}"><span class="tlab">${x.lab}</span><span class="tnum">${x.num}</span></div>`).join('');
-}
 
 /* ---- KPI ---- */
 function renderKPIs(){
@@ -1029,7 +1002,7 @@ function exportProgram(which){
 }
 
 /* ---- init ---- */
-function renderAll(){ renderTopSummary(); renderKPIs(); renderStaffStats(); renderLeave(); renderUpcoming(); renderTimeline(); renderProgram(); renderDDay(); renderCal(); renderRoster(); }
+function renderAll(){ renderKPIs(); renderStaffStats(); renderLeave(); renderUpcoming(); renderTimeline(); renderProgram(); renderDDay(); renderCal(); renderRoster(); }
 document.getElementById('refDate').value=ymd(today());
 calCursor=new Date(today().getFullYear(),today().getMonth(),1);
 loadData();

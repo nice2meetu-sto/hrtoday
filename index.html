@@ -374,13 +374,13 @@ table.gg-list thead th{background:#f0f1f6;font-weight:700;position:sticky;top:0}
       <div class="subchips" id="empFilters" style="margin:0;display:inline-flex"></div>
       <span class="sep" style="margin:0 6px">|</span>
       <span class="flab">입사일</span>
-      <input type="date" id="fHireFrom" class="dfilter" oninput="renderRoster()" aria-label="입사일 시작">
+      <input type="date" id="fHireFrom" class="dfilter" min="1900-01-01" max="2100-12-31" oninput="renderRoster()" aria-label="입사일 시작">
       <span class="sep">~</span>
-      <input type="date" id="fHireTo" class="dfilter" oninput="renderRoster()" aria-label="입사일 종료">
+      <input type="date" id="fHireTo" class="dfilter" min="1900-01-01" max="2100-12-31" oninput="renderRoster()" aria-label="입사일 종료">
       <span class="flab" style="margin-left:8px">퇴사일</span>
-      <input type="date" id="fLeaveFrom" class="dfilter" oninput="renderRoster()" aria-label="퇴사일 시작">
+      <input type="date" id="fLeaveFrom" class="dfilter" min="1900-01-01" max="2100-12-31" oninput="renderRoster()" aria-label="퇴사일 시작">
       <span class="sep">~</span>
-      <input type="date" id="fLeaveTo" class="dfilter" oninput="renderRoster()" aria-label="퇴사일 종료">
+      <input type="date" id="fLeaveTo" class="dfilter" min="1900-01-01" max="2100-12-31" oninput="renderRoster()" aria-label="퇴사일 종료">
       <button class="btn" onclick="clearDateFilters()">기간 초기화</button>
     </div>
     <div id="rosterWrap"></div>

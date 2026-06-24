@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>정현원 현황 표 (독립형)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+/* =========================================================================
+ * 정현원 현황 표 — 독립 실행형
+ *   다른 페이지에 심을 때: 아래 스타일의 .jhc-* 규칙 + 스크립트의 함수 +
+ *   본문의 jhc-wrap 마크업(제목·table)만 가져가면 됩니다.
+ *   클래스를 jhc- 로 접두사 처리해 기존 스타일과 충돌하지 않습니다.
+ * ========================================================================= */
+:root{
+  --jhc-main:#534AB7; --jhc-warn:#A32D2D; --jhc-border:#e2e4ea;
+  --jhc-card:#ffffff; --jhc-ink:#2a2c33; --jhc-ink2:#6b6f7a; --jhc-bg:#f5f6f8;
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--jhc-bg);color:var(--jhc-ink);margin:0;padding:24px}
+.jhc-wrap{max-width:1100px;margin:0 auto}
+.jhc-h{font-size:15px;font-weight:900;margin:0 0 8px}
+.jhc-scroll{overflow-x:auto;border:1px solid var(--jhc-border);border-radius:12px;background:var(--jhc-card)}
+.jhc-table{border-collapse:collapse;font-size:12px;width:100%;min-width:760px}
+.jhc-table th,.jhc-table td{border:1px solid var(--jhc-border);padding:6px 9px;text-align:center;white-space:nowrap}
+.jhc-table th{background:#edeef1;color:var(--jhc-ink);font-weight:700}
+.jhc-table tbody td:first-child,.jhc-table th:first-child{position:sticky;left:0;z-index:1;text-align:left;font-weight:700}
+.jhc-table tbody td:first-child{background:var(--jhc-card)}
+.jhc-table tbody tr:hover td{background:#f1eefb}
+.jhc-table .sumcol{font-weight:800;background:#eef0f3}
+.jhc-table .sumrow td{font-weight:900;background:#eef0f3}
+.jhc-table .neg{color:var(--jhc-warn)}
+.jhc-foot{margin-top:10px;font-size:11px;color:var(--jhc-ink2);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="jhc-wrap">
+  <h3 class="jhc-h">○ 정현원 현황</h3>
+  <div class="jhc-scroll"><table class="jhc-table" id="jhcTable"></table></div>
+  <p class="jhc-foot">
+    · 현원 = 기준일에 재직 중인 전체 인원(재직·휴직·파견 포함).<br>
+    · 결원 = 현원 − 정원 (음수 빨강 = 정원 미달). · 전문직 정원/결원은 ‘가+나급’, ‘다+라급’ 묶음으로 표시.
+  </p>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+ * 1) 설정 — 시트/직급 체계에 맞게 여기만 조정
+ * ========================================================================= */
+const RANK_GEN = ["임원","1급","2급","3급","4급","5급","6급"];   // 일반직 직급(=열 순서)
+const RANK_PRO = ["가급","나급","다급","라급"];                  // 전문직 직급
+const PRO_QUOTA_GROUPS = [["가급","나급"],["다급","라급"]];     // 전문직 정원/결원은 묶음 표시
+const FLAG_SEP = "별도직군";    // 인원 '비고'에 이 문구가 있으면 별도직군
+const EMP_CONTRACT = "기간제";  // 인원 '고용형태'가 이 값이면 기간제
+
+/* =========================================================================
+ * 2) 유틸 / 집계
+ * ========================================================================= */
+const D = s => {                       // 'YYYY-MM-DD'·'YYYY.M.D'·'YYYY/M/D' 등 → Date(로컬자정)
+  if(s==null) return null;
+  const t=String(s).trim(); if(!t) return null;
+  const m=t.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  const d = m ? new Date(+m[1],+m[2]-1,+m[3]) : new Date(t);
+  return isNaN(d.getTime()) ? null : d;
+};
+function isActive(p, ref){              // 기준일 재직 판정
+  const inn=D(p.입사일), out=D(p.퇴사일);
+  return inn && inn<=ref && (!out || ref<=out);
+}
+const isContract = p => String(p.고용형태||"").trim()===EMP_CONTRACT;
+const isSeparate = p => String(p.비고||"").includes(FLAG_SEP);
+const rankOf     = p => String(p.직급||"").trim();
+
+/* '정원' 행들 → {직급/구분 → 정원수}. 가로형(직급=열)·세로형(구분/정원) 모두 지원 */
+function parseQuota(rows){
+  const q={}; const KNOWN=new Set([...RANK_GEN,...RANK_PRO,FLAG_SEP,EMP_CONTRACT]);
+  const num=v=>{ const n=parseInt(String(v).replace(/[^\d-]/g,''),10); return isNaN(n)?null:n; };
+  (rows||[]).forEach(r=>{
+    let matched=false;
+    Object.keys(r).forEach(k=>{ const kk=String(k).trim(); if(KNOWN.has(kk)){ const v=num(r[k]); if(v!==null){ q[kk]=v; matched=true; } } });
+    if(matched) return;
+    const label=String(r.구분 ?? r.직급 ?? r.항목 ?? r.명칭 ?? Object.values(r)[0] ?? "").trim();
+    const v=num(r.정원 ?? r.정원수 ?? r.인원 ?? r.수 ?? r.값 ?? Object.values(r)[1]);
+    if(label && KNOWN.has(label)) q[label]=v??0;
+  });
+  return q;
+}
+function finalizeRec(rec){
+  rec.genSub=RANK_GEN.reduce((s,r)=>s+(rec[r]||0),0);
+  rec.proSub=RANK_PRO.reduce((s,r)=>s+(rec[r]||0),0);
+  rec.total =rec.genSub+rec.proSub+(rec.sep||0);   // 정원현황(일반+전문+별도)
+  rec.grand =rec.total+(rec.contract||0);           // 합계(+기간제)
+  return rec;
+}
+function quotaRecord(QUOTA){
+  const rec={}; [...RANK_GEN,...RANK_PRO].forEach(r=>rec[r]=QUOTA[r]||0);
+  rec.sep=QUOTA[FLAG_SEP]||0; rec.contract=QUOTA[EMP_CONTRACT]||0;
+  return finalizeRec(rec);
+}
+function staffRecord(active){
+  const rec={}; [...RANK_GEN,...RANK_PRO].forEach(r=>rec[r]=0); rec.sep=0; rec.contract=0;
+  active.forEach(p=>{
+    if(isContract(p)){ rec.contract++; return; }
+    if(isSeparate(p)){ rec.sep++; return; }
+    const r=rankOf(p); if(rec[r]!==undefined) rec[r]++;   // 모르는 직급은 어디에도 안 들어감(데이터 점검용)
+  });
+  return finalizeRec(rec);
+}
+
+/* =========================================================================
+ * 3) 렌더 — buildJeonghyeon(tableEl, people, quotaRows, asOfDate)
+ * ========================================================================= */
+function buildJeonghyeon(tableEl, people, quotaRows, asOfDate){
+  const ref = D(asOfDate) || new Date();
+  const active = (people||[]).filter(p=>isActive(p,ref));
+  const q = quotaRecord(parseQuota(quotaRows));
+  const c = staffRecord(active);
+  const gsum=(rec,g)=>g.reduce((s,r)=>s+(rec[r]||0),0);
+  const head=`<thead>
+      <tr>
+        <th rowspan="2">구분</th>
+        <th colspan="${RANK_GEN.length+1}">일반직</th>
+        <th colspan="${RANK_PRO.length+1}">전문직</th>
+        <th rowspan="2">별도직군</th><th rowspan="2">정원현황</th><th rowspan="2">기간제</th><th rowspan="2">합계</th>
+      </tr>
+      <tr>${RANK_GEN.map(r=>`<th>${r}</th>`).join("")}<th>소계</th>${RANK_PRO.map(r=>`<th>${r}</th>`).join("")}<th>소계</th></tr>
+    </thead>`;
+  /* proMode: 'each'=직급별(현원) / 'group'=정원 묶음(정원·결원) */
+  const rowHTML=(name,rec,proMode,cls="")=>{
+    const isDiff=name==="결원";
+    const cell=(v,sum)=>`<td class="${sum?'sumcol':''} ${(isDiff&&v<0)?'neg':''}">${v}</td>`;
+    let s=`<tr class="${cls}"><td>${name}</td>`;
+    RANK_GEN.forEach(r=>s+=cell(rec[r]||0,false)); s+=cell(rec.genSub||0,true);
+    if(proMode==="group"){
+      PRO_QUOTA_GROUPS.forEach(g=>{ const v=isDiff?(gsum(c,g)-gsum(q,g)):gsum(rec,g);
+        s+=`<td colspan="${g.length}" class="${(isDiff&&v<0)?'neg':''}">${v}</td>`; });
+    } else { RANK_PRO.forEach(r=>s+=cell(rec[r]||0,false)); }
+    s+=cell(rec.proSub||0,true);
+    s+=cell(rec.sep||0,false)+cell(rec.total||0,true)+cell(rec.contract||0,false)+cell(rec.grand||0,true);
+    return s+"</tr>";
+  };
+  const d={}; [...RANK_GEN,...RANK_PRO,"genSub","proSub","sep","total","contract","grand"].forEach(k=>d[k]=(c[k]||0)-(q[k]||0));
+  const body=rowHTML("정원",q,"group")+rowHTML("현원",c,"each")+rowHTML("결원",d,"group","sumrow");
+  tableEl.innerHTML = head+`<tbody>${body}</tbody>`;
+}
+
+/* =========================================================================
+ * 4) 데이터 주입
+ *   ▶ 실서비스: people = 인원시트 배열, quotaRows = 정원시트 배열, asOf = 기준일.
+ *     (예: Apps Script GET JSON → const {인원,정원}=j.data; buildJeonghyeon(el, 인원, 정원, '2026-06-24'))
+ *   ▼ 아래는 데모 데이터
+ * ========================================================================= */
+const DEMO_PEOPLE = [
+  {사번:"1",사원명:"임원A",부서:"-",직급:"임원",고용형태:"일반직",입사일:"2010-01-01",퇴사일:"",비고:""},
+  {사번:"2",사원명:"일반1",부서:"-",직급:"1급",고용형태:"일반직",입사일:"2012-01-01",퇴사일:"",비고:""},
+  {사번:"3",사원명:"일반5",부서:"-",직급:"5급",고용형태:"일반직",입사일:"2018-01-01",퇴사일:"",비고:""},
+  {사번:"4",사원명:"일반5b",부서:"-",직급:"5급",고용형태:"일반직",입사일:"2019-01-01",퇴사일:"",비고:""},
+  {사번:"5",사원명:"전문가",부서:"-",직급:"가급",고용형태:"전문직",입사일:"2017-01-01",퇴사일:"",비고:""},
+  {사번:"6",사원명:"전문다",부서:"-",직급:"다급",고용형태:"전문직",입사일:"2016-01-01",퇴사일:"",비고:""},
+  {사번:"7",사원명:"별도직",부서:"-",직급:"6급",고용형태:"일반직",입사일:"2015-01-01",퇴사일:"",비고:"별도직군"},
+  {사번:"8",사원명:"기간제A",부서:"-",직급:"",고용형태:"기간제",입사일:"2024-01-01",퇴사일:"",비고:""},
+];
+const DEMO_QUOTA = [
+  {구분:"임원",정원:1},{구분:"1급",정원:6},{구분:"2급",정원:14},{구분:"3급",정원:18},
+  {구분:"4급",정원:24},{구분:"5급",정원:27},{구분:"6급",정원:24},
+  {구분:"가급",정원:5},{구분:"나급",정원:5},{구분:"다급",정원:18},{구분:"라급",정원:10},
+  {구분:"별도직군",정원:0},{구분:"기간제",정원:0},
+];
+
+buildJeonghyeon(document.getElementById("jhcTable"), DEMO_PEOPLE, DEMO_QUOTA, "2026-06-24");
+</script>
+</body>
+</html>

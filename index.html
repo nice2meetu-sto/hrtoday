@@ -987,10 +987,10 @@ function dl(name,rows){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=name; a.click();
 }
 function exportCSV(){
-  const rows=[["상태","사번","사원명","부서","직급","고용형태","입사일","퇴사일","현재 사용 제도"]];
+  const rows=[["상태","사번","사원명","성별","부서","직급","고용형태","입사일","퇴사일","현재 사용 제도"]];
   rosterList().forEach(({p,st})=>{
     const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,REF)==="현재").map(pr=>pr.제도+(pr.상세?' '+pr.상세:'')).join(' / ');
-    rows.push([st,p.사번,p.사원명,p.부서,p.직급,p.고용형태,p.입사일,p.퇴사일||'',cur]);
+    rows.push([st,p.사번,p.사원명,p.성별||'',p.부서,p.직급,p.고용형태,p.입사일,p.퇴사일||'',cur]);
   });
   dl(`명단_${rosterFilter}_${ymd(REF)}.csv`,rows);
 }

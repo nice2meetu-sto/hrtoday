@@ -212,6 +212,32 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
 .staff-table .shade-y td,.staff-table .shade-y td:first-child{background:#fcf6db}
 .staff-table .shade-o td,.staff-table .shade-o td:first-child{background:#fbe9d6}
 .staff-table .shade-g td,.staff-table .shade-g td:first-child{background:#e8f4e4}
+/* 정현원 비교표: 과부족 배지 · 충원율 막대 */
+.cmp-table{min-width:480px}
+.cmp-table .num{font-variant-numeric:tabular-nums}
+.cmp-badge{display:inline-block;min-width:42px;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:700}
+.cmp-badge.short{background:var(--warn-soft,#fdeaea);color:var(--warn)}
+.cmp-badge.over{background:var(--main-soft);color:var(--main)}
+.cmp-badge.even{background:#eef0f4;color:var(--ink2)}
+.cmp-rate{display:flex;align-items:center;gap:8px;justify-content:center}
+.cmp-bar{width:84px;height:8px;border-radius:5px;background:#eceef3;overflow:hidden}
+.cmp-bar>i{display:block;height:100%;border-radius:5px;background:var(--main)}
+.cmp-bar>i.full{background:var(--valid)}
+.cmp-bar>i.low{background:var(--warn)}
+.cmp-pct{font-size:12px;font-variant-numeric:tabular-nums;min-width:38px;text-align:right}
+/* 센터별(근무지) 근무자 현황 */
+.centers{display:flex;gap:12px;flex-wrap:wrap}
+.center-card{flex:0 1 200px;min-width:170px;border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden}
+.center-head{width:100%;display:flex;align-items:center;gap:8px;padding:12px 14px;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s}
+.center-head:hover{background:var(--main-soft)}
+.center-card .cinfo{display:flex;flex-direction:column;gap:2px}
+.center-card .cloc{font-weight:800;font-size:14px}
+.center-card .ccnt{font-weight:900;font-size:18px;color:var(--main);line-height:1}
+.center-card .ctoggle{margin-left:auto;font-size:11px;color:var(--ink2);font-weight:600;white-space:nowrap}
+.center-list{list-style:none;margin:0;padding:6px 8px 10px;border-top:1px solid var(--border)}
+.center-list li{display:flex;flex-direction:column;padding:5px 8px;font-size:13px;font-weight:500;border-radius:6px}
+.center-list li.ct{background:#fdf6d8}
+.center-list .cmeta{font-size:11px;color:var(--ink2);font-weight:400}
 
 @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.cal-grid{grid-template-columns:1fr}.tl-scale{margin-left:130px}.tl-name{width:130px}}
 /* 상단 고정 요약 바 (총원/현원/휴직/파견) */
@@ -287,8 +313,12 @@ header{position:sticky;top:0;z-index:50;background:rgba(245,246,248,.92);backdro
     <p class="staff-note" id="staffNote" style="display:none"></p>
     <h3 class="staff-h">○ 직급별 인원 현황</h3>
     <div class="staff-wrap"><table class="staff-table" id="staffRankTbl"></table></div>
+    <h3 class="staff-h">○ 정현원 비교 (정원 · 현원 · 과부족 · 충원율)</h3>
+    <div class="staff-wrap" style="max-width:680px"><table class="staff-table cmp-table" id="staffCompareTbl"></table></div>
     <h3 class="staff-h">○ 정현원 현황</h3>
     <div class="staff-wrap"><table class="staff-table" id="staffQuotaTbl"></table></div>
+    <h3 class="staff-h">○ 센터별(근무지) 근무자 현황 <span style="font-size:12px;color:var(--ink2);font-weight:500">· 본사 제외</span></h3>
+    <div class="centers" id="centerWrap"></div>
   </section>
 
   <!-- TAB: 휴직자 -->
@@ -408,7 +438,7 @@ const SAMPLE_PROGRAMS = [
 ];
 
 let PEOPLE = [], PROGRAMS = [];
-let TEAMORDER = [], QUOTA = {}, TEAMORD = {};   // 인원현황표용: '팀 순서' / '정원' 시트 (TEAMORD: 부서→표시순서)
+let TEAMORDER = [], QUOTA = {}, QUOTA_ROWS = [], TEAMORD = {};   // 인원현황표용: '팀 순서' / '정원' 시트 (QUOTA_ROWS: 변경일 포함 원본)
 /* ▲▲▲ 설정/데이터 영역 끝 ▲▲▲ */
 
 /* ---- 상태 메시지 ---- */
@@ -436,7 +466,7 @@ async function loadData(){
     if(!j.ok) throw new Error(j.error||'알 수 없는 오류');
     PEOPLE=j.data.인원||[]; PROGRAMS=j.data.제도||[];
     TEAMORDER=parseTeamOrder(j.data['팀 순서']||j.data.팀순서);
-    QUOTA=parseQuota(j.data['정원']||j.data.정원);
+    QUOTA_ROWS=j.data['정원']||j.data.정원||[];   // QUOTA는 렌더 시 변경일 기준으로 계산
     renderAll();
     setStatus(null);
   }catch(err){
@@ -598,6 +628,32 @@ function parseQuota(rows){
   });
   return q;
 }
+/* '정원' 시트 → 기준일자(dateIso) 시점에 유효한 {직급/구분 → 정원수}.
+   '변경일' 열이 있으면 항목별로 dateIso 이하의 가장 최근 변경일 값을 적용(미래분 제외).
+   변경일이 비어있는 행은 기본값(가장 낮은 우선순위)으로 취급. */
+function quotaMapAsOf(rows, dateIso){
+  const KNOWN=new Set([...RANK_GEN,...RANK_PRO,FLAG_SEP,EMP_CONTRACT]);
+  const num=v=>{ const n=parseInt(String(v).replace(/[^\d-]/g,''),10); return isNaN(n)?null:n; };
+  const cdate=r=>{ const raw=r.변경일 ?? r['변경 일'] ?? r.적용일 ?? r.시행일 ?? ''; const m=String(raw).trim().match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/); return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:''; };
+  const tuples=[];
+  (rows||[]).forEach(r=>{
+    const dt=cdate(r);
+    let matched=false;
+    Object.keys(r).forEach(k=>{ const kk=String(k).trim(); if(KNOWN.has(kk)){ const v=num(r[k]); if(v!==null){ tuples.push({label:kk,value:v,date:dt}); matched=true; } } });
+    if(matched) return;
+    const label=String(r.구분 ?? r.직급 ?? r.항목 ?? r.명칭 ?? Object.values(r)[0] ?? "").trim();
+    const v=num(r.정원 ?? r.정원수 ?? r.인원 ?? r.수 ?? r.값);
+    if(label && KNOWN.has(label)) tuples.push({label,value:v??0,date:dt});
+  });
+  const best={};
+  tuples.forEach(t=>{
+    if(t.date && dateIso && t.date>dateIso) return;       // 미래 변경분 제외
+    const td=t.date||'0000-00-00';
+    if(!best[t.label] || td>=best[t.label].d) best[t.label]={v:t.value,d:td};
+  });
+  const q={}; Object.keys(best).forEach(k=>q[k]=best[k].v);
+  return q;
+}
 
 /* 조회일 기준 부서 목록(팀 순서 우선, 데이터에만 있는 부서는 뒤에 추가) */
 function staffTeams(active){
@@ -689,6 +745,7 @@ function renderQuotaTable(active){
   document.getElementById('staffQuotaTbl').innerHTML=head+`<tbody>${body}</tbody>`;
 }
 function renderStaffStats(){
+  QUOTA=quotaMapAsOf(QUOTA_ROWS, kstYMD());   // 조회일 시점의 정원(변경일 적용)
   const active=PEOPLE.filter(p=>isActive(p,kstDate()));
   const asOf=document.getElementById('staffAsOf'); if(asOf) asOf.textContent=`· 조회일 ${kstYMD()} (KST) · 현원 ${active.length}명`;
   const note=document.getElementById('staffNote');
@@ -698,7 +755,57 @@ function renderStaffStats(){
     else note.style.display='none';
   }
   renderRankTable(active);
+  renderQuotaCompare(active);
   renderQuotaTable(active);
+  renderCenters(active);
+}
+
+/* --- 정현원 비교표(직급별 정원·현원·과부족·충원율) --- */
+function renderQuotaCompare(active){
+  const c=staffRecord(active);                 // 현원(직급버킷)
+  const Q=QUOTA;                               // 정원(변경일 적용)
+  const proH=RANK_PRO.reduce((s,r)=>s+(c[r]||0),0);
+  const proQ=RANK_PRO.reduce((s,r)=>s+(Q[r]||0),0);
+  const rows=[];
+  RANK_GEN.forEach(r=>rows.push({label:r, quota:Q[r]||0, hyeon:c[r]||0}));
+  rows.push({label:"전문직", quota:proQ, hyeon:proH});
+  rows.push({label:"별도직군", quota:Q[FLAG_SEP]||0, hyeon:c.sep||0});
+  rows.push({label:"기간제", quota:Q[EMP_CONTRACT]||0, hyeon:c.contract||0});
+  const totQ=rows.reduce((s,r)=>s+r.quota,0), totH=rows.reduce((s,r)=>s+r.hyeon,0);
+  const badge=(quota,hyeon)=>{ const diff=quota-hyeon;   // ＋초과 / －결원
+    if(diff===0) return `<span class="cmp-badge even">0</span>`;
+    if(diff>0)   return `<span class="cmp-badge short">－${diff}</span>`;      // 결원
+    return `<span class="cmp-badge over">＋${Math.abs(diff)}</span>`; };       // 초과
+  const rate=(quota,hyeon)=>{ if(quota<=0) return `<span class="cmp-pct" style="color:var(--ink2)">—</span>`;
+    const r=hyeon/quota*100, w=Math.max(0,Math.min(100,r)), cls=r>=100?'full':(r<70?'low':'');
+    return `<span class="cmp-bar"><i class="${cls}" style="width:${w}%"></i></span><span class="cmp-pct">${r.toFixed(0)}%</span>`; };
+  const tr=(r,isTot)=>`<tr class="${isTot?'sumrow':''}"><td>${r.label}</td><td class="num">${r.quota}</td><td class="num">${r.hyeon}</td><td>${badge(r.quota,r.hyeon)}</td><td><div class="cmp-rate">${rate(r.quota,r.hyeon)}</div></td></tr>`;
+  const head=`<thead><tr><th>직급</th><th>정원</th><th>현원</th><th>과부족</th><th>충원율</th></tr></thead>`;
+  document.getElementById('staffCompareTbl').innerHTML=head+`<tbody>${rows.map(r=>tr(r,false)).join('')}${tr({label:'합계',quota:totQ,hyeon:totH},true)}</tbody>`;
+}
+
+/* --- 센터별(근무지) 근무자 현황 — '본사' 제외, 펼치면 입사일순 명단(기간제 노란색) --- */
+let centerOpen={};
+function toggleCenter(loc){ centerOpen[loc]=!centerOpen[loc]; renderCenters(); }
+function renderCenters(active){
+  active = active || PEOPLE.filter(p=>isActive(p,kstDate()));
+  const m={};
+  active.forEach(p=>{ const loc=String(p.근무지||'').trim(); if(!loc||loc==='본사') return; (m[loc]=m[loc]||[]).push(p); });
+  const locs=Object.keys(m).sort((a,b)=> m[b].length-m[a].length || a.localeCompare(b,'ko'));
+  const wrap=document.getElementById('centerWrap');
+  if(!locs.length){ wrap.innerHTML='<div class="empty">본사 외 근무지 인원이 없습니다.</div>'; return; }
+  wrap.innerHTML=locs.map(loc=>{
+    const ppl=m[loc].slice().sort((a,b)=>{ const da=D(a.입사일),db=D(b.입사일); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1; return da-db; });
+    const open=!!centerOpen[loc];
+    const list=ppl.map(p=>`<li class="${isContract(p)?'ct':''}">${p.사원명}<span class="cmeta">${p.직급||''}${p.입사일?' · '+p.입사일:''}${isContract(p)?' · 기간제':''}</span></li>`).join('');
+    return `<div class="center-card">
+      <button class="center-head" onclick="toggleCenter('${loc.replace(/'/g,"\\'")}')">
+        <span class="cinfo"><span class="cloc">${loc}</span><span class="ccnt">${ppl.length}명</span></span>
+        <span class="ctoggle">${open?'접기 ▲':'펼침 ▼'}</span>
+      </button>
+      <ul class="center-list" style="${open?'':'display:none'}">${list}</ul>
+    </div>`;
+  }).join('');
 }
 function exportStaffStats(){
   const active=PEOPLE.filter(p=>isActive(p,kstDate()));
@@ -710,6 +817,7 @@ function exportStaffStats(){
     }).flat());
   lines.push([`인원현황표 (조회일 ${kstYMD()} KST, 현원 ${active.length}명)`]);
   lines.push(["○ 직급별 인원 현황"]); tblRows('staffRankTbl').forEach(r=>lines.push(r));
+  lines.push([]); lines.push(["○ 정현원 비교 (정원·현원·과부족·충원율)"]); tblRows('staffCompareTbl').forEach(r=>lines.push(r));
   lines.push([]); lines.push(["○ 정현원 현황"]); tblRows('staffQuotaTbl').forEach(r=>lines.push(r));
   const csv='﻿'+lines.map(r=>r.map(cell).join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`인원현황표_${kstYMD()}.csv`; a.click();

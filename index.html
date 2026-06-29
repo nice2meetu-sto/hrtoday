@@ -271,6 +271,7 @@ table.gg-list thead th{background:#f0f1f6;font-weight:700;position:sticky;top:0}
         <input type="date" id="refDate" min="1900-01-01" max="2100-12-31">
       </div>
       <button class="btn" onclick="setToday()">오늘</button>
+      <button class="btn" onclick="openDB()">🗄 DB</button>
       <button class="btn primary" id="refreshBtn" onclick="loadData()">↻ 새로고침</button>
     </div>
   </div>
@@ -552,6 +553,15 @@ function tab(i){
 function setToday(){ document.getElementById('refDate').value=ymd(today()); onDate(); }
 function onDate(){ REF = D(document.getElementById('refDate').value) || today(); ddayPage=0; calCursor=new Date(REF.getFullYear(),REF.getMonth(),1); renderAll(); }
 document.getElementById('refDate').addEventListener('change', onDate);
+
+/* DB(구글시트) 접속 — 비밀번호 확인 후 새 탭으로 이동 */
+const DB_URL="https://docs.google.com/spreadsheets/d/1DhBdmCOnwbM-aOeA2nMGeYM17YjCeJJ0OydF1Gv48aI/edit?usp=sharing";
+function openDB(){
+  const pw=prompt("DB 접속 비밀번호를 입력하세요");
+  if(pw===null) return;                        // 취소
+  if(pw==="stohr") window.open(DB_URL,"_blank","noopener");
+  else alert("비밀번호가 올바르지 않습니다.");
+}
 
 /* ---- KPI ---- */
 function renderKPIs(){

@@ -296,6 +296,8 @@ table.gradegrid .sep-left{border-left:2px solid #cdd0db}
 .org-chart.sim .org-team.candrop{border-color:var(--main-line)}
 .org-chart.sim .org-team.candrop .org-team-h{background:var(--main-soft);cursor:copy}
 .org-chart.sim .org-team.candrop .org-team-h .otname::after{content:" ← 여기로";font-size:10px;font-weight:600;color:var(--main)}
+.org-chart.sim .org-loc.locdrop{cursor:copy;border-left-color:var(--main)}
+.org-chart.sim .org-team.candrop .org-loc.locdrop:hover{color:var(--main);background:var(--main-soft);border-radius:5px}
 @media(max-width:640px){.org-bonbus{grid-template-columns:1fr}}
 /* 부서 명단 모달 */
 .gg-modal-bg{display:none;position:fixed;inset:0;background:rgba(30,31,45,.42);z-index:100;align-items:center;justify-content:center;padding:20px}
@@ -377,7 +379,7 @@ table.gg-list thead th{background:#f0f1f6;font-weight:700;position:sticky;top:0}
       </div>
     </div>
     <p class="staff-note" id="staffNote" style="display:none"></p>
-    <p class="sim-hint" id="simHint" style="display:none">🧪 <b>시뮬레이션 모드</b> — 옮길 <b>이름을 탭</b>해 선택한 뒤 <b>옮길 팀 이름을 탭</b>하면 이동합니다. (PC에서는 드래그도 가능) · 결과는 <b>전체 명단 CSV</b>로 받으세요. · <b>시뮬 종료</b>를 누르면 원래대로 돌아갑니다.</p>
+    <p class="sim-hint" id="simHint" style="display:none">🧪 <b>시뮬레이션 모드</b> — 옮길 <b>이름을 탭</b>해 선택한 뒤 <b>옮길 팀 이름</b>(또는 팀 안의 <b>근무지</b>)을 탭하면 이동합니다. (PC에서는 드래그도 가능) · 결과는 <b>전체 명단 CSV</b>(부서·근무지 반영)로 받으세요. · <b>시뮬 종료</b>를 누르면 원래대로 돌아갑니다.</p>
     <div class="org-chart" id="orgChart"></div>
   </section>
 
@@ -711,11 +713,12 @@ function staffTeams(active){
 
 /* ================= 조직도 (인원현황표 개편) — 조회일(KST) 기준 ================= */
 /* --- 인사배치 시뮬레이션 상태 (메모리 전용, 종료 시 원복) --- */
-let SIM_ON=false, SIM={}, SIM_SEL=null;   // SIM: 사번→새부서, SIM_SEL: 선택된 사번
+let SIM_ON=false, SIM={}, SIM_LOC={}, SIM_SEL=null;   // SIM: 사번→새부서, SIM_LOC: 사번→새근무지
 const simDept = p => (SIM_ON && SIM[p.사번]!=null) ? SIM[p.사번] : ((String(p.부서||"").trim())||"(미지정)");
+const simLoc  = p => (SIM_ON && SIM_LOC[p.사번]!=null) ? SIM_LOC[p.사번] : String(p.근무지||"").trim();
 function toggleSim(){
   SIM_ON=!SIM_ON;
-  if(!SIM_ON){ SIM={}; SIM_SEL=null; }   // 종료 → 원복
+  if(!SIM_ON){ SIM={}; SIM_LOC={}; SIM_SEL=null; }   // 종료 → 원복
   const b=document.getElementById('simBtn'); if(b){ b.textContent=SIM_ON?'✕ 시뮬 종료(원복)':'⇄ 인사배치 시뮬레이션'; b.classList.toggle('primary',SIM_ON); }
   const c=document.getElementById('simCsvBtn'); if(c) c.style.display=SIM_ON?'':'none';
   const h=document.getElementById('simHint'); if(h) h.style.display=SIM_ON?'block':'none';
@@ -723,16 +726,19 @@ function toggleSim(){
   renderOrgChart();
 }
 function simSelect(sabun){ SIM_SEL = (SIM_SEL===String(sabun)) ? null : String(sabun); renderOrgChart(); }
-function simMoveTo(dept){ if(!SIM_SEL) return; SIM[SIM_SEL]=dept; SIM_SEL=null; renderOrgChart(); }
+function simMoveTo(dept){ if(!SIM_SEL) return; SIM[SIM_SEL]=dept; SIM_SEL=null; renderOrgChart(); }   // 팀만 이동(근무지 유지)
+function simMoveLoc(dept,loc){ if(!SIM_SEL) return; SIM[SIM_SEL]=dept; SIM_LOC[SIM_SEL]=loc; SIM_SEL=null; renderOrgChart(); }  // 팀+근무지 이동
 function simDragStart(e,sabun){ SIM_SEL=String(sabun); try{ e.dataTransfer.setData('text/plain',String(sabun)); e.dataTransfer.effectAllowed='move'; }catch(_){} }
 function simDrop(e,dept){ e.preventDefault(); let sb=SIM_SEL; try{ sb=e.dataTransfer.getData('text/plain')||SIM_SEL; }catch(_){} if(sb){ SIM[sb]=dept; SIM_SEL=null; renderOrgChart(); } }
+function simDropLoc(e,dept,loc){ e.preventDefault(); e.stopPropagation(); let sb=SIM_SEL; try{ sb=e.dataTransfer.getData('text/plain')||SIM_SEL; }catch(_){} if(sb){ SIM[sb]=dept; SIM_LOC[sb]=loc; SIM_SEL=null; renderOrgChart(); } }
 function exportSimCSV(){
-  const rows=[["상태","사번","사원명","성별","부서","직급","고용형태","입사일","퇴사일","현재 사용 제도"]];
+  const rows=[["상태","사번","사원명","성별","부서","근무지","직급","고용형태","입사일","퇴사일","현재 사용 제도"]];
   PEOPLE.forEach(p=>{
     const st=statusOf(p,REF);
     const dept=(SIM[p.사번]!=null?SIM[p.사번]:(p.부서||""));
+    const loc=(SIM_LOC[p.사번]!=null?SIM_LOC[p.사번]:(p.근무지||""));
     const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,REF)==="현재").map(pr=>pr.제도+(pr.상세?' '+pr.상세:'')).join(' / ');
-    rows.push([st,p.사번,p.사원명,p.성별||'',dept,p.직급,p.고용형태,p.입사일,p.퇴사일||'',cur]);
+    rows.push([st,p.사번,p.사원명,p.성별||'',dept,loc,p.직급,p.고용형태,p.입사일,p.퇴사일||'',cur]);
   });
   dl(`인사배치시뮬_${ymd(REF)}.csv`,rows);
 }
@@ -800,11 +806,13 @@ function orgTeamCard(team, byTeam, ref){
   if(!mem.length){ inner='<span class="org-empty">구성원 없음</span>'; }
   else {
     const groups=new Map();   // 근무지별 하위 그룹 (본사·미지정은 라벨 없이 묶음)
-    mem.forEach(p=>{ const raw=String(p.근무지||"").trim(); const key=(raw==="본사")?"":raw; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(p); });
+    mem.forEach(p=>{ const raw=simLoc(p); const key=(raw==="본사")?"":raw; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(p); });
     const keys=[...groups.keys()].sort((a,b)=> (a===""?0:1)-(b===""?0:1));   // 본사/미지정(라벨없음) 먼저
     inner=keys.map(k=>{
       const chips=groups.get(k).map(p=>orgChip(p,ref)).join("");
-      const label=k?`<div class="org-loc">${ggEsc(k)} <span class="org-loc-n">${groups.get(k).length}</span></div>`:"";
+      const locArg=String(k).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+      const locSim=(SIM_ON&&k)?` onclick="simMoveLoc('${arg}','${locArg}')" ondragover="event.preventDefault()" ondrop="simDropLoc(event,'${arg}','${locArg}')"`:"";
+      const label=k?`<div class="org-loc${SIM_ON?' locdrop':''}"${locSim}>${ggEsc(k)} <span class="org-loc-n">${groups.get(k).length}</span></div>`:"";
       return `<div class="org-locgrp">${label}<div class="org-locmem">${chips}</div></div>`;
     }).join("");
   }

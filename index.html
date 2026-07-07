@@ -252,8 +252,10 @@ table.gradegrid .sep-left{border-left:2px solid #cdd0db}
 .org-jiksok{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
 .org-bonbus{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;width:100%;align-items:start}
 .org-bonbu{border:1px solid var(--border);border-radius:14px;background:#fafbfc;padding:12px;display:flex;flex-direction:column;gap:10px}
-.org-bonbu-h{text-align:center;font-weight:900;font-size:14px;color:var(--main);background:var(--main-soft);border:1px solid var(--main-line);border-radius:10px;padding:8px}
+.org-bonbu-h{text-align:center;font-weight:900;font-size:14px;color:var(--ink);padding:6px 8px}
 .org-team{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden}
+.org-team.lead{border:2px solid var(--main)}
+.org-team.lead .org-team-h{background:var(--main-soft);color:var(--main)}
 .org-ceo .org-team,.org-jiksok .org-team{min-width:210px}
 .org-team-h{width:100%;display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f0f1f6;border:none;border-bottom:1px solid var(--border);cursor:pointer;font-family:inherit;text-align:left;transition:background .15s}
 .org-team-h:hover{background:var(--main-soft)}
@@ -719,7 +721,8 @@ function orgTeamCard(team, byTeam, ref){
       return `<div class="org-locgrp">${label}<div class="org-locmem">${chips}</div></div>`;
     }).join("");
   }
-  return `<div class="org-team">
+  const lead = /대표이사/.test(team) || mem.some(p=>{ const z=String(p.직위||"").trim(); return z==="대표이사"||z==="본부장"; });
+  return `<div class="org-team${lead?' lead':''}">
     <button class="org-team-h" onclick="openGGDeptModal('${arg}')"><span class="otname">${ggEsc(team)}</span><span class="otcnt">${mem.length}</span></button>
     <div class="org-mem">${inner}</div>
   </div>`;

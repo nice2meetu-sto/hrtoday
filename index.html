@@ -742,7 +742,7 @@ function orgPerson(sabun){
   const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,ref)==="현재");
   const progTags=cur.map(pr=>`<span class="pp-tag" style="background:${colorOf(pr.제도)}">${ggEsc(progLabel(pr))}</span>`).join("");
   const rep=String(p.대체||"").trim();
-  let repHtml=""; if(rep){ const nm=nameOf(rep); const disp=(nm&&nm!=="(이름없음)")?nm:rep; repHtml=`<div class="pp-rep">${ggEsc(disp)} 대체</div>`; }
+  let repHtml=""; if(rep){ const nm=nameOf(rep); const disp=(nm&&nm!=="(이름없음)")?nm:rep; repHtml=`<div class="pp-rep">${ggEsc(disp)}</div>`; }
   const meta=[p.직급,p.고용형태,p.입사일].filter(Boolean).join(" · ");
   document.getElementById('ppBody').innerHTML =
     `<div class="pp-name">${ggEsc(p.사원명)}${pos?`<span class="pp-pos">${ggEsc(pos)}</span>`:""}</div>`+

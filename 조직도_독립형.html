@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>조직도 (독립형)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+/* =========================================================================
+ * 조직도 — 독립 실행형 (인사발령 시뮬레이션 · '사용 중 제도' 코드 제외)
+ *   이식할 때: 아래 :root + .org-*/.gg-modal*/.pp-* 규칙과 스크립트의 함수,
+ *   본문의 orgChart/모달 마크업만 가져가면 됩니다.
+ * ========================================================================= */
+:root{
+  --main:#534AB7; --main-soft:#ece9fb; --main-line:#cfc8f2;
+  --border:#e2e4ea; --ink:#2a2c33; --ink2:#6b6f7a; --bg:#f5f6f8; --card:#ffffff; --amber:#b8860b;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding:20px 24px 64px}
+.org-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.org-head h1{font-size:19px;font-weight:900;letter-spacing:-.01em}
+.org-head h1 span{color:var(--ink2);font-weight:500;font-size:13px;margin-left:8px}
+.btn{font-family:inherit;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer}
+.btn:hover{border-color:var(--main-line);background:var(--main-soft)}
+.msg{display:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:500;margin-bottom:14px}
+.msg.show{display:block}
+.msg.err{background:#f7dada;color:#A32D2D;border:1px solid #e6b3b3}
+.msg.info{background:#fbeec9;color:var(--amber);border:1px solid #ecd9a0}
+.note{font-size:12px;color:var(--ink2);margin:0 0 14px}
+
+/* 조직도 */
+.org-legend{display:flex;gap:12px;font-size:11px;color:var(--ink2);flex-wrap:wrap;align-items:center}
+.org-legend span{display:inline-flex;align-items:center;gap:5px}
+.org-legend i{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
+.org-legend .lg-ct{background:#fdf3cf}
+.org-chart{display:flex;flex-direction:column;gap:18px;align-items:center}
+.org-ceo{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+.org-jiksok{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+.org-bonbus{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;width:100%;align-items:start}
+.org-bonbu{border:1px solid var(--border);border-radius:14px;background:#fafbfc;padding:12px;display:flex;flex-direction:column;gap:10px}
+.org-team{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden}
+.org-team.lead{border:2px solid var(--main)}
+.org-team.lead .org-team-h{background:var(--main-soft)}
+.org-ceo .org-team,.org-jiksok .org-team{min-width:210px}
+.org-team-h{width:100%;display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f0f1f6;border:none;border-bottom:1px solid var(--border);cursor:pointer;font-family:inherit;color:var(--ink);-webkit-appearance:none;text-align:left;transition:background .15s}
+.org-team-h:hover{background:var(--main-soft)}
+.org-team-h .otname{font-weight:800;font-size:13px}
+.org-team-h .otcnt{margin-left:auto;font-size:12px;font-weight:900;color:var(--main);background:#fff;border:1px solid var(--border);border-radius:999px;min-width:22px;text-align:center;padding:1px 6px}
+.org-mem{display:flex;flex-direction:column;gap:9px;padding:10px}
+.org-locgrp{display:flex;flex-direction:column;gap:5px}
+.org-loc{font-size:11px;font-weight:700;color:var(--ink2);display:flex;align-items:center;gap:5px;border-left:3px solid var(--main-line);padding-left:6px}
+.org-loc-n{font-weight:600;color:#aab}
+.org-locmem{display:flex;flex-wrap:wrap;gap:6px}
+.org-chip{display:inline-flex;align-items:baseline;gap:6px;font-size:12px;font-weight:600;background:#f4f5f8;border:1px solid var(--border);border-radius:999px;padding:4px 11px;cursor:pointer}
+.org-chip .org-chip-main{white-space:nowrap}
+.org-chip .org-pos{font-size:10px;font-weight:700;color:var(--main);margin-right:3px}
+.org-chip em{font-style:normal;font-size:10px;font-weight:500;color:var(--ink2);margin-left:3px}
+.org-chip .org-chip-sub{font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap;border-left:1px solid rgba(0,0,0,.14);padding-left:6px}
+.org-chip.ct{background:#fdf3cf;border-color:#efe1a6}   /* 기간제 */
+.org-empty{font-size:12px;color:var(--ink2)}
+@media(max-width:640px){.org-bonbus{grid-template-columns:1fr}}
+
+/* 부서 명단 모달 */
+.gg-modal-bg{display:none;position:fixed;inset:0;background:rgba(30,31,45,.42);z-index:100;align-items:center;justify-content:center;padding:20px}
+.gg-modal-bg.open{display:flex}
+.gg-modal{background:var(--card);border-radius:16px;width:100%;max-width:720px;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(20,22,40,.3);overflow:hidden}
+.gg-modal header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.gg-modal header h3{margin:0;font-size:16px}
+.gg-modal header .meta{font-size:12px;color:var(--ink2);margin-top:2px}
+.gg-modal header button{border:none;background:none;font-size:22px;color:var(--ink2);cursor:pointer}
+.gg-modal .gbody{overflow:auto;padding:4px 0}
+table.gg-list{border-collapse:collapse;width:100%;font-size:13px}
+table.gg-list th,table.gg-list td{border-bottom:1px solid var(--border);padding:9px 12px;text-align:left;white-space:nowrap}
+table.gg-list thead th{background:#f0f1f6;font-weight:700;position:sticky;top:0}
+
+/* 개인 상세 팝업 */
+.pp-bg{display:none;position:fixed;inset:0;background:rgba(30,31,45,.42);z-index:110;align-items:center;justify-content:center;padding:20px}
+.pp-bg.open{display:flex}
+.pp-box{position:relative;background:var(--card);border-radius:14px;max-width:440px;width:100%;padding:22px 24px;box-shadow:0 20px 60px rgba(20,22,40,.3)}
+.pp-x{position:absolute;top:8px;right:12px;border:none;background:none;font-size:22px;color:var(--ink2);cursor:pointer}
+.pp-name{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pp-name .pp-pos{font-size:12px;font-weight:700;color:var(--main)}
+.pp-line{margin-top:6px;font-size:14px;color:var(--ink2);font-weight:600}
+.pp-rep{margin-top:10px;font-size:14px;font-weight:800;color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="org-head">
+    <h1>조직도 <span id="asOf"></span></h1>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="org-legend"><span><i class="lg-ct"></i>기간제</span></div>
+      <button class="btn" onclick="loadData()">↻ 새로고침</button>
+    </div>
+  </div>
+  <div class="msg" id="msg"></div>
+  <p class="note" id="note" style="display:none"></p>
+  <div class="org-chart" id="orgChart"></div>
+</div>
+
+<!-- 부서 명단 모달 -->
+<div class="gg-modal-bg" id="ggModalBg" onclick="if(event.target.id==='ggModalBg')closeGGModal()">
+  <div class="gg-modal">
+    <header><div><h3 id="ggModalTitle"></h3><div class="meta" id="ggModalMeta"></div></div><button onclick="closeGGModal()" aria-label="닫기">×</button></header>
+    <div class="gbody"><table class="gg-list" id="ggModalTable"></table></div>
+  </div>
+</div>
+<!-- 개인 상세 팝업 -->
+<div class="pp-bg" id="ppBg" onclick="if(event.target.id==='ppBg')closePP()">
+  <div class="pp-box"><button class="pp-x" onclick="closePP()" aria-label="닫기">×</button><div id="ppBody"></div></div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+ * 0) 설정 — Apps Script GET JSON API. 비우면 데모 데이터.
+ *    반환: { ok:true, data:{ 인원:[...], '팀 순서':[...] } }
+ *    인원 헤더:  사번·사원명·부서·직급·고용형태·성별·입사일·퇴사일·근무지·직위·대체
+ *    팀 순서 헤더: 부서·표시순서·본부   (직속 팀은 본부 비우거나 '직속')
+ * ========================================================================= */
+const SCRIPT_URL = "";
+
+let PEOPLE = [], TEAMORDER = [], TEAM_BONBU = {}, BONBU_ORDER = [];
+
+/* 1) 유틸 */
+const ggEsc = s => String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const D = s => { if(s==null) return null; const t=String(s).trim(); if(!t) return null;
+  const m=t.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/); const d=m?new Date(+m[1],+m[2]-1,+m[3]):new Date(t);
+  return isNaN(d.getTime())?null:d; };
+function isActive(p, ref){ const inn=D(p.입사일), out=D(p.퇴사일); return inn && inn<=ref && (!out || ref<=out); }
+function kstYMD(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
+function kstDate(){ const [y,m,d]=kstYMD().split('-').map(Number); return new Date(y,m-1,d); }
+const isContract = p => String(p.고용형태||"").trim()==="기간제";
+const rankOf = p => String(p.직급||"").trim();
+const RANK_PRO = ["가급","나급","다급","라급"];
+function ggGradeOf(p){
+  if(String(p.고용형태||"").trim()==="전문직") return "전문직";
+  const k=rankOf(p);
+  if(k==="임원"||/대표|본부장/.test(k)) return "임원";
+  const m=k.match(/^([1-6])급/); if(m) return m[1]+"급";
+  if(k.startsWith("전문직")||/^[가나다라]\s*급?$/.test(k)||RANK_PRO.includes(k)) return "전문직";
+  return null;
+}
+const nameOf = sb => (PEOPLE.find(p=>String(p.사번)===String(sb))||{}).사원명 || "(이름없음)";
+
+/* 2) 팀 순서 → 표시순서·본부 매핑 */
+function parseTeamOrder(rows){
+  const list=(rows||[]).map((r,i)=>{
+    const name=String(r.부서 ?? r.팀 ?? r.팀명 ?? r.구분 ?? Object.values(r)[0] ?? "").trim();
+    const o=parseFloat(String(r.표시순서 ?? r.순서 ?? r['표시 순서'] ?? "").replace(/[^\d.-]/g,''));
+    const bonbu=String(r.본부 ?? r.소속본부 ?? r['소속 본부'] ?? r.상위 ?? "").trim();
+    return {name, ord:isNaN(o)?i+1:o, i, bonbu};
+  }).filter(x=>x.name);
+  list.sort((a,b)=> a.ord-b.ord || a.i-b.i);
+  TEAM_BONBU={}; BONBU_ORDER=[];
+  list.forEach(x=>{ TEAM_BONBU[x.name]=x.bonbu; if(x.bonbu && x.bonbu!=="직속" && !BONBU_ORDER.includes(x.bonbu)) BONBU_ORDER.push(x.bonbu); });
+  return list.map(x=>x.name);
+}
+function staffTeams(active){
+  const seen=[...new Set(active.map(p=>String(p.부서||"").trim()).filter(Boolean))];
+  if(!TEAMORDER.length) return seen;
+  const list=TEAMORDER.slice();
+  seen.forEach(t=>{ if(!list.includes(t)) list.push(t); });
+  return list;
+}
+
+/* 3) 정렬 (팀장 → 직급순 → 입사일순) */
+function orgMemberRank(p){
+  if(isContract(p)) return 100;
+  const order=["임원","1급","2급","3급","4급","5급","6급","전문직"];
+  const i=order.indexOf(ggGradeOf(p)); return i<0?90:i;
+}
+function orgMemberSort(a,b){
+  const la=(String(a.직위||"").trim()==="팀장")?0:1, lb=(String(b.직위||"").trim()==="팀장")?0:1;
+  if(la!==lb) return la-lb;
+  return orgMemberRank(a)-orgMemberRank(b) || String(a.입사일||"").localeCompare(String(b.입사일||""));
+}
+
+/* 4) 칩 / 팀 카드 / 렌더 */
+function orgChip(p){
+  const cls = isContract(p) ? "ct" : "";                 // 기간제만 색 구분
+  const jg = p.직급 ? `<em>${ggEsc(p.직급)}</em>` : "";
+  const pos=String(p.직위||"").trim();
+  const posTag = (pos && pos!=="팀원") ? `<span class="org-pos">${ggEsc(pos)}</span>` : "";
+  const rep=String(p.대체||"").trim();
+  let repTag=""; if(rep){ const nm=nameOf(rep); const disp=(nm && nm!=="(이름없음)")?nm:rep; repTag=`<span class="org-chip-sub">${ggEsc(disp)}</span>`; }
+  const tip=[p.사원명||"", pos, p.직급, p.고용형태].filter(Boolean).join(" · ");
+  const sb=String(p.사번??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+  return `<span class="org-chip ${cls}" onclick="orgPerson('${sb}')" title="${ggEsc(tip)}"><span class="org-chip-main">${posTag}${ggEsc(p.사원명)}${jg}</span>${repTag}</span>`;
+}
+function orgTeamCard(team, byTeam){
+  const mem=(byTeam[team]||[]).slice().sort(orgMemberSort);
+  const arg = String(team).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+  let inner;
+  if(!mem.length){ inner='<span class="org-empty">구성원 없음</span>'; }
+  else {
+    const groups=new Map();   // 근무지별 하위 그룹 (본사·미지정은 라벨 없이)
+    mem.forEach(p=>{ const raw=String(p.근무지||"").trim(); const key=(raw==="본사")?"":raw; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(p); });
+    const keys=[...groups.keys()].sort((a,b)=> (a===""?0:1)-(b===""?0:1));
+    inner=keys.map(k=>{
+      const chips=groups.get(k).map(orgChip).join("");
+      const label=k?`<div class="org-loc">${ggEsc(k)} <span class="org-loc-n">${groups.get(k).length}</span></div>`:"";
+      return `<div class="org-locgrp">${label}<div class="org-locmem">${chips}</div></div>`;
+    }).join("");
+  }
+  const lead = /대표이사/.test(team) || mem.some(p=>{ const z=String(p.직위||"").trim(); return z==="대표이사"||z==="본부장"; });
+  return `<div class="org-team${lead?' lead':''}">
+    <button class="org-team-h" onclick="openGGDeptModal('${arg}')"><span class="otname">${ggEsc(team)}</span><span class="otcnt">${mem.length}</span></button>
+    <div class="org-mem">${inner}</div>
+  </div>`;
+}
+function renderOrgChart(){
+  const ref=kstDate();
+  const active=PEOPLE.filter(p=>isActive(p,ref));
+  document.getElementById('asOf').textContent=`· 조회일 ${kstYMD()} (KST) · ${active.length}명`;
+  const note=document.getElementById('note');
+  if(!BONBU_ORDER.length){ note.style.display='block'; note.textContent="※ '팀 순서' 시트에 '본부' 열이 없어 본부 구분 없이 표시됩니다. 팀별 '본부' 열을 추가하면 조직도로 묶입니다."; }
+  else note.style.display='none';
+  const byTeam={}; active.forEach(p=>{ const d=(String(p.부서||"").trim())||"(미지정)"; (byTeam[d]=byTeam[d]||[]).push(p); });
+  const teams=staffTeams(active);
+  const isCEO=t=>/대표이사/.test(t);
+  const bonbuOf=t=>{ const b=(TEAM_BONBU[t]||"").trim(); return (!b||b==="직속")?"":b; };
+  const ceo=teams.filter(isCEO);
+  const rest=teams.filter(t=>!isCEO(t));
+  const bonbus=[...BONBU_ORDER]; rest.forEach(t=>{ const b=bonbuOf(t); if(b && !bonbus.includes(b)) bonbus.push(b); });
+  const jiksok=rest.filter(t=>!bonbuOf(t));
+  let html="";
+  if(ceo.length) html+=`<div class="org-ceo">${ceo.map(t=>orgTeamCard(t,byTeam)).join("")}</div>`;
+  if(jiksok.length) html+=`<div class="org-jiksok">${jiksok.map(t=>orgTeamCard(t,byTeam)).join("")}</div>`;
+  if(bonbus.length) html+=`<div class="org-bonbus">`+bonbus.map(b=>{
+      const bt=rest.filter(t=>bonbuOf(t)===b);
+      return `<div class="org-bonbu">${bt.map(t=>orgTeamCard(t,byTeam)).join("")}</div>`;
+    }).join("")+`</div>`;
+  document.getElementById('orgChart').innerHTML = html || '<div class="org-empty">표시할 인원이 없습니다.</div>';
+}
+
+/* 5) 이름 클릭 → 개인 상세 팝업 (제도 제외) */
+function orgPerson(sabun){
+  const p=PEOPLE.find(x=>String(x.사번)===String(sabun)); if(!p) return;
+  const pos=String(p.직위||"").trim();
+  const rep=String(p.대체||"").trim();
+  let repHtml=""; if(rep){ const nm=nameOf(rep); const disp=(nm&&nm!=="(이름없음)")?nm:rep; repHtml=`<div class="pp-rep">${ggEsc(disp)}</div>`; }
+  const meta=[p.직급,p.고용형태,p.입사일].filter(Boolean).join(" · ");
+  document.getElementById('ppBody').innerHTML =
+    `<div class="pp-name">${ggEsc(p.사원명)}${pos?`<span class="pp-pos">${ggEsc(pos)}</span>`:""}</div>`+
+    (meta?`<div class="pp-line">${ggEsc(meta)}</div>`:"")+ repHtml;
+  document.getElementById('ppBg').classList.add('open');
+}
+function closePP(){ document.getElementById('ppBg').classList.remove('open'); }
+
+/* 6) 팀명 클릭 → 구성원 명단 모달 (제도·상태 제외) */
+function openGGDeptModal(dept){
+  const ref=kstDate();
+  const members=PEOPLE.filter(p=>isActive(p,ref) && ((String(p.부서||"").trim())||"(미지정)")===dept).sort(orgMemberSort);
+  document.getElementById('ggModalTitle').textContent=dept;
+  document.getElementById('ggModalMeta').textContent=`조회일 ${kstYMD()} · ${members.length}명`;
+  let head="<thead><tr><th>사원명</th><th>직위</th><th>직급</th><th>고용형태</th><th>성별</th><th>근무지</th><th>입사일</th></tr></thead>";
+  let body="<tbody>";
+  if(!members.length) body+=`<tr><td colspan="7" style="text-align:center;color:var(--ink2);padding:30px">구성원이 없습니다.</td></tr>`;
+  else members.forEach(p=>body+=`<tr><td>${ggEsc(p.사원명)}</td><td>${ggEsc(p.직위)}</td><td>${ggEsc(p.직급)}</td><td>${ggEsc(p.고용형태)}</td><td>${ggEsc(p.성별)}</td><td>${ggEsc(p.근무지)}</td><td>${ggEsc(p.입사일)}</td></tr>`);
+  document.getElementById('ggModalTable').innerHTML=head+body+"</tbody>";
+  document.getElementById('ggModalBg').classList.add('open');
+}
+function closeGGModal(){ document.getElementById('ggModalBg').classList.remove('open'); }
+
+/* 7) 데이터 로드 */
+function setMsg(kind,text){ const el=document.getElementById('msg'); if(!kind){el.className='msg';el.textContent='';return;} el.className='msg show '+kind; el.textContent=text; }
+async function loadData(){
+  if(!SCRIPT_URL){ PEOPLE=DEMO.인원; TEAMORDER=parseTeamOrder(DEMO['팀 순서']); renderOrgChart();
+    setMsg('info','데모 데이터로 표시 중입니다. 코드 상단 SCRIPT_URL 에 Apps Script URL 을 넣으세요.'); return; }
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'GET'}); const j=await res.json();
+    if(!j.ok) throw new Error(j.error||'오류');
+    PEOPLE=j.data.인원||[]; TEAMORDER=parseTeamOrder(j.data['팀 순서']||j.data.팀순서);
+    renderOrgChart(); setMsg(null);
+  }catch(e){ setMsg('err','데이터 로드 실패: '+e.message); if(!PEOPLE.length){ PEOPLE=DEMO.인원; TEAMORDER=parseTeamOrder(DEMO['팀 순서']); renderOrgChart(); } }
+}
+
+/* ---- 데모 데이터 ---- */
+const DEMO = {
+  '팀 순서':[
+    {부서:"대표이사",표시순서:1,본부:""},
+    {부서:"홍보팀",표시순서:2,본부:"직속"},
+    {부서:"감사관",표시순서:3,본부:"직속"},
+    {부서:"기획예산팀",표시순서:4,본부:"기획경영본부"},
+    {부서:"인사팀",표시순서:5,본부:"기획경영본부"},
+    {부서:"AI혁신팀",표시순서:6,본부:"기획경영본부"},
+    {부서:"글로벌마케팅팀",표시순서:7,본부:"국제관광MICE본부"},
+    {부서:"관광서비스팀",표시순서:8,본부:"관광산업본부"},
+  ],
+  인원:[
+    {사번:"1",사원명:"김대표",부서:"대표이사",직급:"임원",직위:"대표이사",고용형태:"임원",성별:"남",입사일:"2010-01-01",퇴사일:"",근무지:"본사",대체:""},
+    {사번:"2",사원명:"이홍보",부서:"홍보팀",직급:"4급",직위:"팀장",고용형태:"일반직",성별:"여",입사일:"2015-03-01",퇴사일:"",근무지:"본사",대체:""},
+    {사번:"3",사원명:"박기획",부서:"기획예산팀",직급:"2급",직위:"본부장",고용형태:"일반직",성별:"남",입사일:"2012-01-02",퇴사일:"",근무지:"본사",대체:""},
+    {사번:"4",사원명:"정예산",부서:"기획예산팀",직급:"5급",직위:"팀원",고용형태:"일반직",성별:"여",입사일:"2020-02-03",퇴사일:"",근무지:"본사",대체:""},
+    {사번:"5",사원명:"최인사",부서:"인사팀",직급:"3급",직위:"팀장",고용형태:"일반직",성별:"남",입사일:"2016-07-01",퇴사일:"",근무지:"본사",대체:""},
+    {사번:"6",사원명:"한신설",부서:"AI혁신팀",직급:"6급",직위:"팀원",고용형태:"일반직",성별:"여",입사일:"2024-04-01",퇴사일:"",근무지:"본사",대체:""},
+    {사번:"7",사원명:"오현장",부서:"관광서비스팀",직급:"5급",직위:"팀장",고용형태:"일반직",성별:"남",입사일:"2018-09-01",퇴사일:"",근무지:"센터A",대체:""},
+    {사번:"8",사원명:"신대체",부서:"관광서비스팀",직급:"6급",직위:"팀원",고용형태:"기간제",성별:"여",입사일:"2026-01-01",퇴사일:"",근무지:"센터A",대체:"7"},
+  ]
+};
+
+loadData();
+</script>
+</body>
+</html>

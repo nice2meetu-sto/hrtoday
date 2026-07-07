@@ -728,16 +728,22 @@ function orgChip(p, ref){
   const sb=String(p.사번??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
   return `<span class="org-chip ${cls}" onclick="orgPerson('${sb}')" title="${ggEsc(tip)}"><span class="org-chip-main">${posTag}${ggEsc(p.사원명)}${jg}</span>${repTag}</span>`;
 }
+/* 제도 표시 라벨: 단축은 상세(시간), 휴직·휴가·파견은 종료일까지 */
+function progLabel(pr){
+  const cat=categoryOf(pr.제도), isDisp=(pr.제도||"").includes("파견");
+  const extra = pr.상세 ? " "+pr.상세 : ((cat==="휴직"||cat==="휴가"||isDisp) && pr.종료일 ? " ~"+pr.종료일 : "");
+  return (pr.제도||"")+extra;
+}
 /* 이름(칩) 클릭 → 개인 상세 팝업 */
 function orgPerson(sabun){
   const p=PEOPLE.find(x=>String(x.사번)===String(sabun)); if(!p) return;
   const ref=kstDate();
   const pos=String(p.직위||"").trim();
   const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,ref)==="현재");
-  const progTags=cur.map(pr=>`<span class="pp-tag" style="background:${colorOf(pr.제도)}">${ggEsc(pr.제도)}${pr.상세?" "+ggEsc(pr.상세):""}</span>`).join("");
+  const progTags=cur.map(pr=>`<span class="pp-tag" style="background:${colorOf(pr.제도)}">${ggEsc(progLabel(pr))}</span>`).join("");
   const rep=String(p.대체||"").trim();
   let repHtml=""; if(rep){ const nm=nameOf(rep); const disp=(nm&&nm!=="(이름없음)")?nm:rep; repHtml=`<div class="pp-rep">${ggEsc(disp)} 대체</div>`; }
-  const meta=[p.직급,p.고용형태].filter(Boolean).join(" · ");
+  const meta=[p.직급,p.고용형태,p.입사일].filter(Boolean).join(" · ");
   document.getElementById('ppBody').innerHTML =
     `<div class="pp-name">${ggEsc(p.사원명)}${pos?`<span class="pp-pos">${ggEsc(pos)}</span>`:""}</div>`+
     (meta?`<div class="pp-line">${ggEsc(meta)}</div>`:"")+
@@ -869,13 +875,15 @@ function bindGGDeptClicks(){ document.querySelectorAll('#staffRankTbl td.dept.cl
 function openGGDeptModal(dept){
   const ref=kstDate();
   const members=PEOPLE.filter(p=>isActive(p,ref) && ((String(p.부서||"").trim())||"(미지정)")===dept)
-    .sort((a,b)=>String(a.입사일||"").localeCompare(String(b.입사일||"")));
+    .sort(orgMemberSort);   // 조직도 칩과 동일: 팀장 → 직급순 → 입사일순
   document.getElementById('ggModalTitle').textContent=dept;
   document.getElementById('ggModalMeta').textContent=`조회일 ${kstYMD()} · ${members.length}명`;
-  let head="<thead><tr><th>사원명</th><th>직급</th><th>고용형태</th><th>성별</th><th>입사일</th><th>상태</th></tr></thead>";
+  let head="<thead><tr><th>사원명</th><th>직급</th><th>고용형태</th><th>성별</th><th>입사일</th><th>현재 사용 제도</th></tr></thead>";
   let body="<tbody>";
+  const progCell=p=>{ const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,ref)==="현재");
+    return cur.length?cur.map(pr=>`<span style="display:inline-block;font-size:11px;color:#fff;border-radius:5px;padding:1px 7px;margin:1px 3px 1px 0;background:${colorOf(pr.제도)}">${ggEsc(progLabel(pr))}</span>`).join(""):""; };
   if(!members.length) body+=`<tr><td colspan="6" style="text-align:center;color:var(--ink2);padding:30px">구성원이 없습니다.</td></tr>`;
-  else members.forEach(p=>body+=`<tr><td>${ggEsc(p.사원명)}</td><td>${ggEsc(p.직급)}</td><td>${ggEsc(p.고용형태)}</td><td>${ggEsc(p.성별)}</td><td>${ggEsc(p.입사일)}</td><td>${ggEsc(statusOf(p,ref))}</td></tr>`);
+  else members.forEach(p=>body+=`<tr><td>${ggEsc(p.사원명)}</td><td>${ggEsc(p.직급)}</td><td>${ggEsc(p.고용형태)}</td><td>${ggEsc(p.성별)}</td><td>${ggEsc(p.입사일)}</td><td>${progCell(p)}</td></tr>`);
   document.getElementById('ggModalTable').innerHTML=head+body+"</tbody>";
   document.getElementById('ggModalBg').classList.add('open');
 }

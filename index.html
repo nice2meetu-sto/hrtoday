@@ -266,15 +266,28 @@ table.gradegrid .sep-left{border-left:2px solid #cdd0db}
 .org-loc{font-size:11px;font-weight:700;color:var(--ink2);display:flex;align-items:center;gap:5px;border-left:3px solid var(--main-line);padding-left:6px}
 .org-loc-n{font-weight:600;color:#aab}
 .org-locmem{display:flex;flex-wrap:wrap;gap:6px}
-.org-chip{display:inline-flex;align-items:baseline;gap:6px;font-size:12px;font-weight:600;background:#f4f5f8;border:1px solid var(--border);border-radius:999px;padding:4px 11px}
+.org-chip{display:inline-flex;align-items:baseline;gap:6px;font-size:12px;font-weight:600;background:#f4f5f8;border:1px solid var(--border);border-radius:999px;padding:4px 11px;cursor:pointer}
 .org-chip .org-chip-main{white-space:nowrap}
 .org-chip .org-pos{font-size:10px;font-weight:700;color:var(--main);margin-right:3px}
 .org-chip em{font-style:normal;font-size:10px;font-weight:500;color:var(--ink2);margin-left:3px}
 .org-chip .org-chip-sub{font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap;border-left:1px solid rgba(0,0,0,.14);padding-left:6px}
-.org-chip.ct{background:#fdf3cf;border-color:#efe1a6}
-.org-chip.disp{background:#dbe8fb;border-color:#bcd3f4}
-.org-chip.leave{background:#eaeaec;color:var(--ink2)}
+.org-chip.ct{background:#fdf3cf;border-color:#efe1a6}         /* 기간제 노랑 */
+.org-chip.short{background:#dbe8fb;border-color:#bcd3f4}      /* 단축 하늘 */
+.org-chip.vac{background:#fbe4cf;border-color:#f0c9a3}        /* 휴가 주황 */
+.org-chip.leave{background:#eaeaec;color:var(--ink2)}         /* 휴직 회색 */
+.org-chip.disp{background:#eaeaec;border:1.5px solid #8b909c} /* 파견 회색+짙은 테두리 */
 .org-chip.leave em{color:#9aa0ad}
+/* 개인 상세 팝업 */
+.pp-bg{display:none;position:fixed;inset:0;background:rgba(30,31,45,.42);z-index:110;align-items:center;justify-content:center;padding:20px}
+.pp-bg.open{display:flex}
+.pp-box{position:relative;background:var(--card);border-radius:14px;max-width:440px;width:100%;padding:22px 24px;box-shadow:0 20px 60px rgba(20,22,40,.3)}
+.pp-x{position:absolute;top:8px;right:12px;border:none;background:none;font-size:22px;color:var(--ink2);cursor:pointer}
+.pp-name{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pp-name .pp-pos{font-size:12px;font-weight:700;color:var(--main)}
+.pp-line{margin-top:6px;font-size:14px;color:var(--ink2);font-weight:600}
+.pp-progs{margin-top:10px;display:flex;flex-wrap:wrap;gap:5px}
+.pp-tag{display:inline-block;font-size:12px;color:#fff;border-radius:6px;padding:2px 9px;font-weight:600}
+.pp-rep{margin-top:10px;font-size:14px;font-weight:800;color:var(--amber)}
 .org-empty{font-size:12px;color:var(--ink2)}
 @media(max-width:640px){.org-bonbus{grid-template-columns:1fr}}
 /* 부서 명단 모달 */
@@ -443,6 +456,11 @@ table.gg-list thead th{background:#f0f1f6;font-weight:700;position:sticky;top:0}
     <header><div><h3 id="ggModalTitle"></h3><div class="meta" id="ggModalMeta"></div></div><button onclick="closeGGModal()" aria-label="닫기">×</button></header>
     <div class="gbody"><table class="gg-list" id="ggModalTable"></table></div>
   </div>
+</div>
+
+<!-- 개인 상세 팝업 (조직도 이름 클릭) -->
+<div class="pp-bg" id="ppBg" onclick="if(event.target.id==='ppBg')closePP()">
+  <div class="pp-box"><button class="pp-x" onclick="closePP()" aria-label="닫기">×</button><div id="ppBody"></div></div>
 </div>
 
 <script>
@@ -692,9 +710,12 @@ function orgMemberSort(a,b){
 }
 function orgChip(p, ref){
   const emp=String(p.고용형태||"").trim();
-  const onDisp = emp==="파견" || PROGRAMS.some(pr=>pr.사번===p.사번 && (pr.제도||"").includes("파견") && programState(pr,ref)==="현재");
+  const curs=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,ref)==="현재");
+  const hasCat=c=>curs.some(pr=>categoryOf(pr.제도)===c);
+  const onDisp = emp==="파견" || curs.some(pr=>(pr.제도||"").includes("파견"));
   const onLeave = statusOf(p,ref)==="휴직";
-  const cls = isContract(p) ? "ct" : (onDisp ? "disp" : (onLeave ? "leave" : ""));
+  /* 배경색: 휴직>파견>휴가>단축>기간제 순으로 판정 */
+  const cls = onLeave ? "leave" : onDisp ? "disp" : hasCat("휴가") ? "vac" : hasCat("단축") ? "short" : isContract(p) ? "ct" : "";
   const jg = p.직급 ? `<em>${ggEsc(p.직급)}</em>` : "";
   const pos=String(p.직위||"").trim();
   const posTag = (pos && pos!=="팀원") ? `<span class="org-pos">${ggEsc(pos)}</span>` : "";
@@ -704,8 +725,27 @@ function orgChip(p, ref){
   const parts=[p.사원명||""]; if(pos) parts.push(pos); if(p.직급) parts.push(p.직급); if(emp) parts.push(emp);
   if(onLeave) parts.push("휴직"); if(onDisp) parts.push("파견"); if(rep) parts.push(`${p.대체}(사번) 대체`);
   const tip=parts.filter(Boolean).join(" · ");
-  return `<span class="org-chip ${cls}" title="${ggEsc(tip)}"><span class="org-chip-main">${posTag}${ggEsc(p.사원명)}${jg}</span>${repTag}</span>`;
+  const sb=String(p.사번??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+  return `<span class="org-chip ${cls}" onclick="orgPerson('${sb}')" title="${ggEsc(tip)}"><span class="org-chip-main">${posTag}${ggEsc(p.사원명)}${jg}</span>${repTag}</span>`;
 }
+/* 이름(칩) 클릭 → 개인 상세 팝업 */
+function orgPerson(sabun){
+  const p=PEOPLE.find(x=>String(x.사번)===String(sabun)); if(!p) return;
+  const ref=kstDate();
+  const pos=String(p.직위||"").trim();
+  const cur=PROGRAMS.filter(pr=>pr.사번===p.사번 && programState(pr,ref)==="현재");
+  const progTags=cur.map(pr=>`<span class="pp-tag" style="background:${colorOf(pr.제도)}">${ggEsc(pr.제도)}${pr.상세?" "+ggEsc(pr.상세):""}</span>`).join("");
+  const rep=String(p.대체||"").trim();
+  let repHtml=""; if(rep){ const nm=nameOf(rep); const disp=(nm&&nm!=="(이름없음)")?nm:rep; repHtml=`<div class="pp-rep">${ggEsc(disp)} 대체</div>`; }
+  const meta=[p.직급,p.고용형태].filter(Boolean).join(" · ");
+  document.getElementById('ppBody').innerHTML =
+    `<div class="pp-name">${ggEsc(p.사원명)}${pos?`<span class="pp-pos">${ggEsc(pos)}</span>`:""}</div>`+
+    (meta?`<div class="pp-line">${ggEsc(meta)}</div>`:"")+
+    (progTags?`<div class="pp-progs">${progTags}</div>`:"")+
+    repHtml;
+  document.getElementById('ppBg').classList.add('open');
+}
+function closePP(){ document.getElementById('ppBg').classList.remove('open'); }
 function orgTeamCard(team, byTeam, ref){
   const mem=(byTeam[team]||[]).slice().sort(orgMemberSort);
   const arg = String(team).replace(/\\/g,"\\\\").replace(/'/g,"\\'");

@@ -264,10 +264,10 @@ table.gradegrid .sep-left{border-left:2px solid #cdd0db}
 .org-loc{font-size:11px;font-weight:700;color:var(--ink2);display:flex;align-items:center;gap:5px;border-left:3px solid var(--main-line);padding-left:6px}
 .org-loc-n{font-weight:600;color:#aab}
 .org-locmem{display:flex;flex-wrap:wrap;gap:6px}
-.org-chip{display:flex;flex-direction:column;gap:1px;font-size:12px;font-weight:600;background:#f4f5f8;border:1px solid var(--border);border-radius:8px;padding:5px 10px;min-width:66px}
+.org-chip{display:inline-flex;align-items:baseline;gap:6px;font-size:12px;font-weight:600;background:#f4f5f8;border:1px solid var(--border);border-radius:999px;padding:4px 11px}
 .org-chip .org-chip-main{white-space:nowrap}
 .org-chip em{font-style:normal;font-size:10px;font-weight:500;color:var(--ink2);margin-left:3px}
-.org-chip .org-chip-sub{font-size:10px;font-weight:700;color:var(--amber);white-space:nowrap}
+.org-chip .org-chip-sub{font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap;border-left:1px solid rgba(0,0,0,.14);padding-left:6px}
 .org-chip.ct{background:#fdf3cf;border-color:#efe1a6}
 .org-chip.disp{background:#dbe8fb;border-color:#bcd3f4}
 .org-chip.leave{background:#eaeaec;color:var(--ink2)}
@@ -690,10 +690,10 @@ function orgChip(p, ref){
   const cls = isContract(p) ? "ct" : (onDisp ? "disp" : (onLeave ? "leave" : ""));
   const jg = p.직급 ? `<em>${ggEsc(p.직급)}</em>` : "";
   const rep=String(p.대체||"").trim();
-  let repLine="";
-  if(rep){ const nm=nameOf(rep); const disp=(nm && nm!=="(이름없음)")?nm:rep; repLine=`<span class="org-chip-sub">${ggEsc(disp)} 대체</span>`; }
-  const tip=`${p.사원명||""} · ${p.직급||"-"} · ${emp||"-"}${onLeave?" · 휴직":""}${onDisp?" · 파견":""}${rep?" · 대체":""}`;
-  return `<span class="org-chip ${cls}" title="${ggEsc(tip)}"><span class="org-chip-main">${ggEsc(p.사원명)}${jg}</span>${repLine}</span>`;
+  let repTag="";
+  if(rep){ const nm=nameOf(rep); const disp=(nm && nm!=="(이름없음)")?nm:rep; repTag=`<span class="org-chip-sub">${ggEsc(disp)}</span>`; }
+  const tip=`${p.사원명||""} · ${p.직급||"-"} · ${emp||"-"}${onLeave?" · 휴직":""}${onDisp?" · 파견":""}${rep?` · ${ggEsc(String(p.대체))}(사번) 대체`:""}`;
+  return `<span class="org-chip ${cls}" title="${ggEsc(tip)}"><span class="org-chip-main">${ggEsc(p.사원명)}${jg}</span>${repTag}</span>`;
 }
 function orgTeamCard(team, byTeam, ref){
   const mem=(byTeam[team]||[]).slice().sort(orgMemberSort);

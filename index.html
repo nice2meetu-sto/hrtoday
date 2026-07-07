@@ -259,9 +259,15 @@ table.gradegrid .sep-left{border-left:2px solid #cdd0db}
 .org-team-h:hover{background:var(--main-soft)}
 .org-team-h .otname{font-weight:800;font-size:13px}
 .org-team-h .otcnt{margin-left:auto;font-size:12px;font-weight:900;color:var(--main);background:#fff;border:1px solid var(--border);border-radius:999px;min-width:22px;text-align:center;padding:1px 6px}
-.org-mem{display:flex;flex-wrap:wrap;gap:5px;padding:10px}
-.org-chip{display:inline-flex;align-items:baseline;gap:4px;font-size:12px;font-weight:600;background:#f4f5f8;border:1px solid var(--border);border-radius:999px;padding:3px 9px}
-.org-chip em{font-style:normal;font-size:10px;font-weight:500;color:var(--ink2)}
+.org-mem{display:flex;flex-direction:column;gap:9px;padding:10px}
+.org-locgrp{display:flex;flex-direction:column;gap:5px}
+.org-loc{font-size:11px;font-weight:700;color:var(--ink2);display:flex;align-items:center;gap:5px;border-left:3px solid var(--main-line);padding-left:6px}
+.org-loc-n{font-weight:600;color:#aab}
+.org-locmem{display:flex;flex-wrap:wrap;gap:6px}
+.org-chip{display:flex;flex-direction:column;gap:1px;font-size:12px;font-weight:600;background:#f4f5f8;border:1px solid var(--border);border-radius:8px;padding:5px 10px;min-width:66px}
+.org-chip .org-chip-main{white-space:nowrap}
+.org-chip em{font-style:normal;font-size:10px;font-weight:500;color:var(--ink2);margin-left:3px}
+.org-chip .org-chip-sub{font-size:10px;font-weight:700;color:var(--amber);white-space:nowrap}
 .org-chip.ct{background:#fdf3cf;border-color:#efe1a6}
 .org-chip.disp{background:#dbe8fb;border-color:#bcd3f4}
 .org-chip.leave{background:#eaeaec;color:var(--ink2)}
@@ -683,16 +689,30 @@ function orgChip(p, ref){
   const onLeave = statusOf(p,ref)==="휴직";
   const cls = isContract(p) ? "ct" : (onDisp ? "disp" : (onLeave ? "leave" : ""));
   const jg = p.직급 ? `<em>${ggEsc(p.직급)}</em>` : "";
-  const tip = `${p.사원명||""} · ${p.직급||"-"} · ${emp||"-"}${onLeave?" · 휴직":""}${onDisp?" · 파견":""}`;
-  return `<span class="org-chip ${cls}" title="${ggEsc(tip)}">${ggEsc(p.사원명)}${jg}</span>`;
+  const rep=String(p.대체||"").trim();
+  let repLine="";
+  if(rep){ const nm=nameOf(rep); const disp=(nm && nm!=="(이름없음)")?nm:rep; repLine=`<span class="org-chip-sub">${ggEsc(disp)} 대체</span>`; }
+  const tip=`${p.사원명||""} · ${p.직급||"-"} · ${emp||"-"}${onLeave?" · 휴직":""}${onDisp?" · 파견":""}${rep?" · 대체":""}`;
+  return `<span class="org-chip ${cls}" title="${ggEsc(tip)}"><span class="org-chip-main">${ggEsc(p.사원명)}${jg}</span>${repLine}</span>`;
 }
 function orgTeamCard(team, byTeam, ref){
   const mem=(byTeam[team]||[]).slice().sort(orgMemberSort);
-  const chips = mem.length ? mem.map(p=>orgChip(p,ref)).join("") : '<span class="org-empty">구성원 없음</span>';
   const arg = String(team).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+  let inner;
+  if(!mem.length){ inner='<span class="org-empty">구성원 없음</span>'; }
+  else {
+    const groups=new Map();   // 근무지별 하위 그룹
+    mem.forEach(p=>{ const loc=String(p.근무지||"").trim(); if(!groups.has(loc)) groups.set(loc,[]); groups.get(loc).push(p); });
+    const keys=[...groups.keys()].sort((a,b)=> (a===""?1:0)-(b===""?1:0));   // 근무지 없는 인원은 마지막
+    inner=keys.map(k=>{
+      const chips=groups.get(k).map(p=>orgChip(p,ref)).join("");
+      const label=k?`<div class="org-loc">${ggEsc(k)} <span class="org-loc-n">${groups.get(k).length}</span></div>`:"";
+      return `<div class="org-locgrp">${label}<div class="org-locmem">${chips}</div></div>`;
+    }).join("");
+  }
   return `<div class="org-team">
     <button class="org-team-h" onclick="openGGDeptModal('${arg}')"><span class="otname">${ggEsc(team)}</span><span class="otcnt">${mem.length}</span></button>
-    <div class="org-mem">${chips}</div>
+    <div class="org-mem">${inner}</div>
   </div>`;
 }
 function renderOrgChart(){
@@ -800,10 +820,10 @@ function openGGDeptModal(dept){
     .sort((a,b)=>String(a.입사일||"").localeCompare(String(b.입사일||"")));
   document.getElementById('ggModalTitle').textContent=dept;
   document.getElementById('ggModalMeta').textContent=`조회일 ${kstYMD()} · ${members.length}명`;
-  let head="<thead><tr><th>사원명</th><th>직급</th><th>고용형태</th><th>성별</th><th>근무지</th><th>입사일</th><th>상태</th></tr></thead>";
+  let head="<thead><tr><th>사원명</th><th>직급</th><th>고용형태</th><th>성별</th><th>입사일</th><th>상태</th></tr></thead>";
   let body="<tbody>";
-  if(!members.length) body+=`<tr><td colspan="7" style="text-align:center;color:var(--ink2);padding:30px">구성원이 없습니다.</td></tr>`;
-  else members.forEach(p=>body+=`<tr><td>${ggEsc(p.사원명)}</td><td>${ggEsc(p.직급)}</td><td>${ggEsc(p.고용형태)}</td><td>${ggEsc(p.성별)}</td><td>${ggEsc(p.근무지)}</td><td>${ggEsc(p.입사일)}</td><td>${ggEsc(statusOf(p,ref))}</td></tr>`);
+  if(!members.length) body+=`<tr><td colspan="6" style="text-align:center;color:var(--ink2);padding:30px">구성원이 없습니다.</td></tr>`;
+  else members.forEach(p=>body+=`<tr><td>${ggEsc(p.사원명)}</td><td>${ggEsc(p.직급)}</td><td>${ggEsc(p.고용형태)}</td><td>${ggEsc(p.성별)}</td><td>${ggEsc(p.입사일)}</td><td>${ggEsc(statusOf(p,ref))}</td></tr>`);
   document.getElementById('ggModalTable').innerHTML=head+body+"</tbody>";
   document.getElementById('ggModalBg').classList.add('open');
 }

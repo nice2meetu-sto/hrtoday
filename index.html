@@ -749,7 +749,7 @@ function renderOrgChart(){
   if(jiksok.length) html+=`<div class="org-jiksok">${jiksok.map(t=>orgTeamCard(t,byTeam,ref)).join("")}</div>`;
   if(bonbus.length) html+=`<div class="org-bonbus">`+bonbus.map(b=>{
       const bt=rest.filter(t=>bonbuOf(t)===b);
-      return `<div class="org-bonbu"><div class="org-bonbu-h">${ggEsc(b)}</div>${bt.map(t=>orgTeamCard(t,byTeam,ref)).join("")}</div>`;
+      return `<div class="org-bonbu">${bt.map(t=>orgTeamCard(t,byTeam,ref)).join("")}</div>`;
     }).join("")+`</div>`;
   document.getElementById('orgChart').innerHTML = html || '<div class="empty">표시할 인원이 없습니다.</div>';
 }

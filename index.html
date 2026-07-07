@@ -246,7 +246,7 @@ table.gradegrid .sep-left{border-left:2px solid #cdd0db}
 .org-legend{display:flex;gap:12px;font-size:11px;color:var(--ink2);flex-wrap:wrap}
 .org-legend span{display:inline-flex;align-items:center;gap:5px}
 .org-legend i{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
-.org-legend .lg-ct{background:#fdf3cf} .org-legend .lg-disp{background:#dbe8fb} .org-legend .lg-leave{background:#eaeaec}
+.org-legend .lg-short{background:#dbe8fb} .org-legend .lg-vac{background:#fbe4cf} .org-legend .lg-leave{background:#eaeaec} .org-legend .lg-disp{background:#eaeaec;border:1.5px solid #8b909c} .org-legend .lg-ct{background:#fdf3cf}
 .org-chart{display:flex;flex-direction:column;gap:18px;align-items:center}
 .org-ceo{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
 .org-jiksok{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
@@ -371,7 +371,7 @@ table.gg-list thead th{background:#f0f1f6;font-weight:700;position:sticky;top:0}
     <div class="tl-head">
       <div class="tl-title">조직도 <span id="staffAsOf" style="color:var(--ink2);font-weight:500;font-size:13px"></span></div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div class="org-legend"><span><i class="lg-ct"></i>기간제</span><span><i class="lg-disp"></i>파견</span><span><i class="lg-leave"></i>휴직</span></div>
+        <div class="org-legend"><span><i class="lg-short"></i>단축</span><span><i class="lg-vac"></i>휴가</span><span><i class="lg-leave"></i>휴직</span><span><i class="lg-disp"></i>파견</span><span><i class="lg-ct"></i>기간제</span></div>
         <button class="btn" id="simBtn" onclick="toggleSim()">⇄ 인사배치 시뮬레이션</button>
         <button class="btn" id="simCsvBtn" onclick="exportSimCSV()" style="display:none">⤓ 전체 명단 CSV</button>
       </div>
